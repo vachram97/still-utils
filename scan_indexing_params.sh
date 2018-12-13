@@ -1,7 +1,8 @@
 #!/bin/bash
 
 time=$(date "+%Y_%m_%d_%H_%M")
-mkdir -p streams/search # creates search subfolder in the stream
+output_folder="streams/search_$time"
+mkdir -p "$output_folder" # creates search subfolder in the stream
 
 PROJECT_NAME="GPCR"
 NPROC="32"
@@ -26,7 +27,7 @@ for snr in "${SNR[@]}"; do
 	for threshold in "${THRESHOLD[@]}"; do
 		for highres in "${HIGHRES[@]}"; do
     		string="indexamajig -i input.lst -g "$GEOM" \
-    		-o "streams/search/"$PROJECT_NAME"_${snr}_${threshold}_${highres}_${median}.stream" \
+    		-o "$output_folder""/"$PROJECT_NAME"_${snr}_${threshold}_${highres}_${median}.stream" \
     		--peaks=peakfinder8 \
     		-j "$NPROC" \
     		-p "$CELL" \
