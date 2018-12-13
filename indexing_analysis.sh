@@ -40,6 +40,7 @@ case $key in
     echo"       ./analyse.sh output.stream --dorate 0 --pushres 1.0 --highres 2.5 --lowres 30.0 --symmetry 222"
     echo "Merging with partialator and analysis:"
     echo"       ./analyse.sh output.stream --dorate 1 --pushres 1.0 --highres 2.5 --lowres 30.0 --symmetry 222"
+    exit 0;
     shift # past argument
     ;;
     -j|--nproc)
