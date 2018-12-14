@@ -39,11 +39,11 @@ case $key in
     ;;
     -h|--help)
     echo "Indexing analysis only:"
-    echo "      ./analyse.sh output.stream"
+    echo "      ./indexing_analysis.sh output.stream"
     echo "Merging with process_hkl and analysis:"
-    echo "      ./analyse.sh output.stream --dorate 0 --pushres 1.0 --highres 2.5 --lowres 30.0 --symmetry 222"
+    echo "      ./indexing_analysis.sh output.stream --dorate 0 --pushres 1.0 --highres 2.5 --lowres 30.0 --symmetry 222"
     echo "Merging with partialator and analysis:"
-    echo "      ./analyse.sh output.stream --dorate 1 --pushres 1.0 --highres 2.5 --lowres 30.0 --symmetry 222"
+    echo "      ./indexing_analysis.sh output.stream --dorate 1 --pushres 1.0 --highres 2.5 --lowres 30.0 --symmetry 222"
     shift # past argument
     ;;
     -j|--nproc)
@@ -65,6 +65,7 @@ esac
 shift # past argument or value
 done
 
+
 echo "----------===Begin log===----------"
 echo "Streams for processing:"
 for fle in "$@"; do
@@ -85,11 +86,6 @@ iterations='0'
 model='unity'
 pushres="inf"
 j="6"
-
-while [[ $# -gt 1 ]]
-do
-key="$1"
-cell_set=0
 
 
 #----------------------------
@@ -208,7 +204,6 @@ if [[ "$dorate" == "1" ]]; then
 	partialator -i "$input" -o tmp.hkl --iterations "$iterations" -j "$j" --model "$model"  --push-res "$pushres" -y "$symmetry"  &> partialator.log
 	rate
 elif [[ "$dorate" == "0" ]]; then
-    #!/bin/bash
     process_hkl -i "$input" -o tmp.hkl  -y "$symmetry" --min-res "$lowres" --push-res "$pushres"
     process_hkl -i "$input" -o tmp.hkl1 -y "$symmetry" --min-res "$lowres" --push-res "$pushres" --odd-only
     process_hkl -i "$input" -o tmp.hkl2 -y "$symmetry" --min-res "$lowres" --push-res "$pushres" --even-only

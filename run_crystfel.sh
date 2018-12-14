@@ -11,14 +11,14 @@ THRESHOLD='10'
 HIGHRES='2.2'
 
 
-LST='imp_71-79.lst' # your input list
+LST='YOUR_INPUT.lst' # your input list
 shuf "$LST" > input.lst # your list must have events to enable this
 
-GEOM="yourgeom.geom"
-CELL="yourcell.cell"
+GEOM="YOUR_GEOMETRY.geom"
+CELL="YOUR_CELL.cell"
 
 
-indexamajig -i input.lst \
+indexamajig -i "$LST" \
 -o "streams/"$PROJECT_NAME"_${time}.stream" \
 --profile \
 -g "$GEOM" \
@@ -28,5 +28,4 @@ indexamajig -i input.lst \
 --min-snr="$SNR" \
 --threshold="$THRESHOLD" \
 --highres="$HIGHRES" \
---indexing=mosflm,dirax,xds |& tee log.indexamajig_$(time)
-
+--indexing=mosflm,dirax,xds |& tee log.indexamajig_${time}

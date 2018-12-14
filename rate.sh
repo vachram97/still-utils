@@ -19,7 +19,7 @@ case $key in
     -h|--help)
     echo "Usage:"
     echo "      ./rate.sh -i basename --highres 2.2 --cell yourcell.cell -s 222"
-    exit 0;
+    exit 0;;
     -i|--basename)
     basename="$2"
     shift # past argument
@@ -59,7 +59,7 @@ echo "$basename"
 
 # outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
 function rate {
-	rm stats[0-9].dat &>/dev/null
+    rm stats[0-9].dat &>/dev/null
         compare_hkl "$basename".hkl1 "$basename".hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats1.dat
         compare_hkl "$basename".hkl1 "$basename".hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats2.dat
         compare_hkl "$basename".hkl1 "$basename".hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats3.dat
@@ -69,11 +69,11 @@ function rate {
         compare_hkl "$basename".hkl1 "$basename".hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats6.dat
         compare_hkl "$basename".hkl1 "$basename".hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat >> stats7.dat
         check_hkl "$basename".hkl --nshells 1 -y "$symmetry" -p "$cell"                          --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >> stats8.dat
-	paste stats4.dat <(awk '{print $3'} stats1.dat) <(awk '{print $3'} stats2.dat) <(awk '{print $3'} stats3.dat) | head -1        > overall_stats.csv
-	paste stats4.dat  <(awk '{print $2}' stats1.dat)  <(awk '{print $2}' stats2.dat)  <(awk '{print $2}' stats3.dat) | tail -n +2 >> overall_stats.csv
-	
-	echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" >> overall_stats.csv
-	paste stats8.dat  <(awk '{print $2}' stats5.dat)  <(awk '{print $2}' stats6.dat)  <(awk '{print $2}' stats7.dat) | tail -n +2 >> overall_stats.csv
+    paste stats4.dat <(awk '{print $3'} stats1.dat) <(awk '{print $3'} stats2.dat) <(awk '{print $3'} stats3.dat) | head -1        > overall_stats.csv
+    paste stats4.dat  <(awk '{print $2}' stats1.dat)  <(awk '{print $2}' stats2.dat)  <(awk '{print $2}' stats3.dat) | tail -n +2 >> overall_stats.csv
+    
+    echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" >> overall_stats.csv
+    paste stats8.dat  <(awk '{print $2}' stats5.dat)  <(awk '{print $2}' stats6.dat)  <(awk '{print $2}' stats7.dat) | tail -n +2 >> overall_stats.csv
 }
 
 
@@ -94,5 +94,3 @@ cat overall_stats.csv >> "$output"
 
 rm stats[0-9].dat
 cat overall_stats.csv
-
-
