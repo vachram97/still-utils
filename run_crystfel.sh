@@ -9,16 +9,22 @@ NPROC="32"
 SNR='3.0'
 THRESHOLD='10'
 HIGHRES='2.2'
+SHUFFLE='1'
 
 
 LST='YOUR_INPUT.lst' # your input list
 shuf "$LST" > input.lst # your list must have events to enable this
+if [[ "$SHUFFLE" == '1' ]]; then
+	LST="input.lst";
+else
+	:
+fi
 
 GEOM="YOUR_GEOMETRY.geom"
 CELL="YOUR_CELL.cell"
 
 
-indexamajig -i input.lst \
+indexamajig -i "$LST" \
 -o "streams/${PROJECT_NAME}_${time}.stream" \
 --profile \
 -g "$GEOM" \
