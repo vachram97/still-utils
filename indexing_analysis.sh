@@ -1,5 +1,17 @@
 #!/bin/bash
 
+input="tmpstream"
+output=merging_stats_$(md5sum $input | cut -c1-5).csv
+dorate="-1"
+symmetry='-1'
+highres='3.0'
+lowres='30.0'
+iterations='0'
+model='unity'
+pushres="inf"
+j="6"
+
+
 while [[ $# -gt 1 ]]
 do
 key="$1"
@@ -55,9 +67,6 @@ case $key in
     cell_set=1
     shift # past argument
     ;;
-    --default)
-    DEFAULT=YES
-    ;;
     *)
             # unknown option
     ;;
@@ -75,17 +84,6 @@ for fle in "$@"; do
         cat "$fle" >> tmpstream 2>&1
     fi
 done
-
-input="tmpstream"
-output=merging_stats_$(md5sum $input | cut -c1-5).csv
-dorate="-1"
-symmetry='-1'
-highres='3.0'
-lowres='30.0'
-iterations='0'
-model='unity'
-pushres="inf"
-j="6"
 
 
 #----------------------------
@@ -152,20 +150,20 @@ NIMAGES=$(grep -a "Begin chunk" $input | wc -l )
 NCRYST=$(grep -a "Begin crystal" $input | wc -l )
 
 # lists all indexing methods used
-METHODS=($(egrep -a "indexed_by" "$input" | grep -a -v 'none' | sort | uniq | awk 'NF>1{print $NF}' | tr '\n' ' '))
+METHODS=($(grep -E -a "indexed_by" "$input" | grep -a -v 'none' | sort | uniq | awk 'NF>1{print $NF}' | tr '\n' ' '))
 NINDEXED=0
 
 for i in "${METHODS[@]}"
 do
-	if [ $i = "none" ]
+	if [ "$i" = "none" ]
 	then
 		continue
 	fi
 
-	tmp="$(egrep -a -w "$i" "$input" | wc -l)"
+	tmp="$(grep -E -c -a -w "$i" "$input")"
 	let "NINDEXED=$NINDEXED+$tmp"
 	ratio=$(echo " scale=3; $tmp/$NIMAGES" | bc)
-	echo -e $ratio "\t" $tmp "\t" "$i"
+	echo -e "$ratio" "\t" "$tmp" "\t" "$i"
 done
 
 NSPOTS=$(grep -a "num_reflections" "$input" | awk '{print $3;}' | paste -sd+ | bc)
@@ -186,17 +184,17 @@ echo "Crystals percentage:	" $(echo "scale=2; $NCRYST/$NIMAGES" | bc)
 echo "Average crystals per image:	" $(echo "scale=2; $NCRYST/$NINDEXED" | bc)
 
 
-echo "==================="
-echo "Resolution summary:"
-echo "==================="
-grep 'diffraction_resolution_limit' $input | awk '{print $6}' | sort -n > reslim.txt 
-python -c 'from text_histogram import histogram; histogram([float(elem) for elem in open("reslim.txt").read().split("\n") if elem and float(elem) < 10], buckets=15)'
-
-echo "======================="
-echo "Profile radius summary:"
-echo "======================="
-grep 'profile_radius' $input | awk '{print $3}' | sort -n > profile_radius.txt 
-python -c 'from text_histogram import histogram; histogram([float(elem) for elem in open("profile_radius.txt").read().split("\n") if elem], buckets=15)'
+#echo "==================="
+#echo "Resolution summary:"
+#echo "==================="
+#grep 'diffraction_resolution_limit' $input | awk '{print $6}' | sort -n > reslim.txt 
+#python -c 'from text_histogram import histogram; histogram([float(elem) for elem in open("reslim.txt").read().split("\n") if elem and float(elem) < 10], buckets=15)'
+#
+#echo "======================="
+#echo "Profile radius summary:"
+#echo "======================="
+#grep 'profile_radius' $input | awk '{print $3}' | sort -n > profile_radius.txt 
+#python -c 'from text_histogram import histogram; histogram([float(elem) for elem in open("profile_radius.txt").read().split("\n") if elem], buckets=15)'
 
 
 if [[ "$dorate" == "1" ]]; then

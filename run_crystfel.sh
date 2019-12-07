@@ -18,8 +18,8 @@ GEOM="YOUR_GEOMETRY.geom"
 CELL="YOUR_CELL.cell"
 
 
-indexamajig -i "$LST" \
--o "streams/"$PROJECT_NAME"_${time}.stream" \
+indexamajig -i input.lst \
+-o "streams/${PROJECT_NAME}_${time}.stream" \
 --profile \
 -g "$GEOM" \
 --peaks=peakfinder8 \
@@ -28,4 +28,4 @@ indexamajig -i "$LST" \
 --min-snr="$SNR" \
 --threshold="$THRESHOLD" \
 --highres="$HIGHRES" \
---indexing=mosflm,dirax,xds |& tee log.indexamajig_${time}
+--indexing=mosflm,dirax,xds |& tee "log.indexamajig_${time}"
