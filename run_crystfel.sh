@@ -23,7 +23,7 @@ fi
 GEOM="YOUR_GEOMETRY.geom"
 CELL="YOUR_CELL.cell"
 
-ln -s "streams/${PROJECT_NAME}_${time}.stream" laststream
+ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
 indexamajig -i "$LST" \
 -o "streams/${PROJECT_NAME}_${time}.stream" \
 --profile \
