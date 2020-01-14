@@ -23,7 +23,7 @@ fi
 GEOM="YOUR_GEOMETRY.geom"
 CELL="YOUR_CELL.cell"
 
-
+ln -s `pwd`/$(ls streams/* -trah | tail -n 1) laststream
 indexamajig -i "$LST" \
 -o "streams/${PROJECT_NAME}_${time}.stream" \
 --profile \
