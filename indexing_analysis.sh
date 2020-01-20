@@ -12,8 +12,7 @@ pushres="inf"
 j="6"
 
 
-while [[ $# -gt 1 ]]
-do
+while [[ $# -gt 1 ]]; do
 key="$1"
 cell_set=0
 case $key in
