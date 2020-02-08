@@ -6,7 +6,7 @@ import os
 helpstring = """\
 Usage: ./extract_cell.py my.stream"""
 
-if sys.argv[1] in ["-h", "--help"]:
+if len(sys.argv) > 1 and sys.argv[1] in ["-h", "--help"]:
     print(helpstring)
     exit(0)
 elif not os.path.exists(sys.argv[1]):
