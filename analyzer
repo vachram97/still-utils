@@ -88,7 +88,7 @@ CLEANUP=1
 ############################
 while [[ $# -gt 0 ]]; do
 	key="$1"
-	echo "..Current argument is ${key}"
+	# echo "..Current argument is ${key}"
 	case "$key" in 
 		-h|--help)
 			echo "${HELP_STRING}";
@@ -126,6 +126,14 @@ while [[ $# -gt 0 ]]; do
 			CELL="$2"
 	shift
 	;;
+	#---------------------------------------- # TODO: working on merging parameter
+		-m|--merging)
+			MERGING="$2"
+			if [[ "$MERGING" != "none" ]] && [[ "$MERGING" != "partialator" ]] && [[ "$MERGING" != "process_hkl" ]]; then
+				echo "Merging parameter should be either 'none' or 'process_hkl' or 'partialator'"; exit 1
+			fi
+	shift
+	;;
 	#----------------------------------------
 	esac
 	shift # past argument or value
@@ -144,15 +152,17 @@ else
 	rm "$OUTPUT"
 fi
 
-if ! (touch "$CELL" &> /dev/null); then
+if ! [[ -f "$CELL" ]]; then
 	echo "Could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
 	echo "Will proceed using cell from the stream"
 	python3 extract_cell.py ${INPUT} > tmp."$OUTPUT".cell
+	cat tmp."$OUTPUT".cell
 else
-	rm "$OUTPUT"
+	rm "$OUTPUT" &> /dev/null
+	cat "$CELL"
 fi
 
-cat tmp."$OUTPUT".cell
+
 
 #################
 # RATE FUNCTION #
@@ -166,5 +176,5 @@ cat tmp."$OUTPUT".cell
 if [ "$CLEANUP" ]; then 
 	echo "......."
 	echo "Removing according to tmp.${OUTPUT} mask"
-	rm tmp.${OUTPUT}* &
+	rm tmp.${OUTPUT}* &> /dev/null
 fi
