@@ -54,7 +54,7 @@ Workflow parameters:
 		Number of processors to be used for merging. By default, output of 'nproc'.
 		If --nproc=0 or less, will use all availalbe and print warning.
 	--logs
-		A folder to write logs in. By default, analyzer.<stream_md5sum>.<date>
+		A folder to write logs in. By default, logs/analyzer.<stream_md5sum>.<date>
 	--histogram
 		Whether to write histogram or not (0 or 1)
 	--cleanup
@@ -142,9 +142,14 @@ while [[ $# -gt 0 ]]; do
 			RATE="$2"
 	shift
 	;;
-	#---------------------------------------- TODO: working on NPROC parameter
+	#----------------------------------------
 		--nproc|-j)
 			NPROC="$2"
+	shift
+	;;
+	#---------------------------------------- TODO: working on LOGS
+		--logs)
+			LOGS="$2"
 	shift
 	;;
 	#----------------------------------------
@@ -199,6 +204,17 @@ if [ ${NPROC} -lt 1 ]; then
 	echo "Warning: will use all available processors, since you provided ${NPROC} < 1"; fi
 
 
+# check validity of LOGS
+if [[ "${LOGS}" == "" ]]; then
+	echo "You have not provided --logs, will use default value"
+	HASH=$(md5sum "${INPUT}" | head -c 6)
+	if ! [[ -d "logs" ]]; then echo "Warning: will create ./logs folder"; fi
+	LOGS="logs/analyzer.${HASH}.$(date +%F-%H-%M-%S)"
+	mkdir -p "${LOGS}"
+else
+	if [[ -d "$LOGS" ]]; then echo "Warning: folder <${LOGS}> exist, will not proceed"; exit 1; fi
+	mkdir -p "$LOGS"
+fi
 
 #################
 # RATE FUNCTION #
