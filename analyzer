@@ -47,7 +47,9 @@ Workflow parameters:
 			partialator: merging with partialator will be done
 	--rate
 		You may want to rate previously processed HKL-file, but not perform any
-		merging on stream. If that
+		merging on stream. If that is true, input file name --input should be
+		an HKL filename, rather than a stream. All three <>.[hkl, hkl1, hkl2]
+		should be present.
 	--nproc, -j
 		Number of processors to be used for merging
 	--logs
@@ -126,12 +128,17 @@ while [[ $# -gt 0 ]]; do
 			CELL="$2"
 	shift
 	;;
-	#---------------------------------------- # TODO: working on merging parameter
-		-m|--merging)
+	#---------------------------------------- #
+		--merging)
 			MERGING="$2"
 			if [[ "$MERGING" != "none" ]] && [[ "$MERGING" != "partialator" ]] && [[ "$MERGING" != "process_hkl" ]]; then
-				echo "Merging parameter should be either 'none' or 'process_hkl' or 'partialator'"; exit 1
+				echo "MERGING parameter should be either 'none' or 'process_hkl' or 'partialator'"; exit 1
 			fi
+	shift
+	;;
+	#---------------------------------------- TODO: working on --rate parameter
+		--rate)
+			RATE="$2"
 	shift
 	;;
 	#----------------------------------------
@@ -144,14 +151,15 @@ done
 # CHECKING THAT ALL INPUT PARAMETERS ARE VALID #
 ################################################
 
+# check validity of OUTPUT
 if ! (touch "$OUTPUT" &> /dev/null); then
-	echo "Could not access output ${OUTPUT}"
-	echo "Please check access right and/or folder structure"
+	echo "Could not access output ${OUTPUT}, please check access right and/or folder structure"
 	exit 1
 else
 	rm "$OUTPUT"
 fi
 
+# check validity of CELL
 if ! [[ -f "$CELL" ]]; then
 	echo "Could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
 	echo "Will proceed using cell from the stream"
@@ -162,6 +170,21 @@ else
 	cat "$CELL"
 fi
 
+echo "---------"
+echo "RATE=${RATE}"
+echo "---------"
+# check validity of RATE
+if [[ "$RATE" != "" ]] && [[ "$RATE" != "no" ]]; then
+	if ! [[ -f "${RATE}.hkl" ]]; then
+		echo "Could not existance, access output ${RATE}.hkl, please check existance, access right and/or folder structure"; exit 1;
+	elif ! [[ -f "${RATE}.hkl1" ]]; then
+		echo "Could not existance, access output ${RATE}.hkl1, please check existance, access right and/or folder structure"; exit 1
+	elif ! [[ -f "${RATE}.hkl2" ]]; then
+		echo "Could not existance, access output ${RATE}.hkl2, please check existance, access right and/or folder structure"; exit 1
+	else
+		:
+	fi
+fi
 
 
 #################
