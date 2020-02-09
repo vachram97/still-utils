@@ -56,10 +56,11 @@ Workflow parameters:
 	--logs
 		A folder to write logs in. By default, logs/analyzer.<stream_md5sum>.<date>
 	--histogram
-		Whether to write histogram or not (0 or 1)
+		Whether to write histogram of resolutions or not (0 or 1).
+		By default 1 -- does not build a histogram.
 	--cleanup
 		Whether you want to remove temporary files, such as concatenated stream,
-		after the run is finished
+		after the run is finished. Should be 0 or 1 (1 by default -- will clean up).
 Merging parameters:
 	--lowres, --highres
 		Low and high resolution for output merging statistics table
@@ -147,9 +148,19 @@ while [[ $# -gt 0 ]]; do
 			NPROC="$2"
 	shift
 	;;
-	#---------------------------------------- TODO: working on LOGS
+	#----------------------------------------
 		--logs)
 			LOGS="$2"
+	shift
+	;;
+	#----------------------------------------
+		--histogram)
+			HISTOGRAM="$2"
+	shift
+	;;
+	#----------------------------------------
+		--cleanup)
+			CLEANUP="$2"
 	shift
 	;;
 	#----------------------------------------
@@ -216,6 +227,14 @@ else
 	mkdir -p "$LOGS"
 fi
 
+# check validity of HISTOGRAM
+if  [ "$HISTOGRAM" -ne 1 ] && [ "$HISTOGRAM" -ne 0 ]; then
+	echo "HISTOGRAM should be either 1 or 0, you provided <${HISTOGRAM}>."; exit 0; fi
+
+# check validity of CLEANUP
+if  [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
+	echo "CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."; exit 0; fi
+
 #################
 # RATE FUNCTION #
 #################
@@ -225,7 +244,10 @@ fi
 ###########
 # CLEANUP #
 ###########
-if [ "$CLEANUP" ]; then 
+if [[ "$CLEANUP" == 0 ]] || [[ "$CLEANUP" == "no" ]]; then 
+	echo "......."
+	echo "Warning: will not do cleanup"
+else
 	echo "......."
 	echo "Removing according to tmp.${OUTPUT} mask"
 	rm tmp.${OUTPUT}* &> /dev/null
