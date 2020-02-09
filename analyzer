@@ -51,7 +51,8 @@ Workflow parameters:
 		an HKL filename, rather than a stream. All three <>.[hkl, hkl1, hkl2]
 		should be present.
 	--nproc, -j
-		Number of processors to be used for merging
+		Number of processors to be used for merging. By default, output of 'nproc'.
+		If --nproc=0 or less, will use all availalbe and print warning.
 	--logs
 		A folder to write logs in. By default, analyzer.<stream_md5sum>.<date>
 	--histogram
@@ -136,9 +137,14 @@ while [[ $# -gt 0 ]]; do
 			fi
 	shift
 	;;
-	#---------------------------------------- TODO: working on --rate parameter
+	#----------------------------------------
 		--rate)
 			RATE="$2"
+	shift
+	;;
+	#---------------------------------------- TODO: working on NPROC parameter
+		--nproc|-j)
+			NPROC="$2"
 	shift
 	;;
 	#----------------------------------------
@@ -170,9 +176,6 @@ else
 	cat "$CELL"
 fi
 
-echo "---------"
-echo "RATE=${RATE}"
-echo "---------"
 # check validity of RATE
 if [[ "$RATE" != "" ]] && [[ "$RATE" != "no" ]]; then
 	if ! [[ -f "${RATE}.hkl" ]]; then
@@ -185,6 +188,16 @@ if [[ "$RATE" != "" ]] && [[ "$RATE" != "no" ]]; then
 		:
 	fi
 fi
+
+# check validity of NPROC
+isnumber='^[0-9]+$'
+if ! [[ ${NPROC} =~ $isnumber ]] ; then
+	echo "NPROC should be a valid number, now <${NPROC}>"; exit 1; fi
+if [ ${NPROC} -gt `nproc` ]; then
+	echo "NPROC should be less or equal than maximum available `nproc`"; exit 1; fi
+if [ ${NPROC} -lt 1 ]; then
+	echo "Warning: will use all available processors, since you provided ${NPROC} < 1"; fi
+
 
 
 #################
