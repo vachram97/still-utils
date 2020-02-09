@@ -1,0 +1,232 @@
+#!/bin/bash
+
+HELP_STRING="\
+This is a wrapper script for CrystFEL-based processing of SFX data.
+
+It provides you with extensive information about your stream file
+and merging statistics without usage of GUI.
+
+It is written in bash and uses only standard CrystFEL utils, such as 
+process_hkl, partialator, compare_hkl, etc.
+
+------
+Usage:
+------
+	./analyzer -i output.stream \\
+		--merging process_hkl \\
+		--lowres 30.0 --highres 3.0 -y 222 --pushres 2.5 \\
+		-o lyzozyme 
+
+		Provides you with output.stream indexing stats 
+		and performs merging with process_hkl
+		Writes output to lysozyme.{hkl,hkl1,hkl2}.
+
+
+	./analyzer -i lysozyme --rate \\
+		--highres 2.5 --lowres 20.0 --cell lyz_v2.cell
+
+		Runs compare_hkl on previously generated hkl files
+		with different unit cell file and resolution cutoffs
+
+
+--------------------
+Workflow parameters:
+--------------------
+	-i, --input
+		Input file name (name or mask)
+	-o, --output
+		Output HKL file name template.
+		Default: 'oanalyzer_YYYY-MM-DD-HH-SS'
+	--cell, -p
+		Unit cell file (used for compare_hkl only)
+	--merging
+		How you want your merging to be done. 
+		Options:
+			none:	no merging will be performed
+			process_hkl: merging with process_hkl will be performed
+			partialator: merging with partialator will be done
+	--rate
+		You may want to rate previously processed HKL-file, but not perform any
+		merging on stream. If that is true, input file name --input should be
+		an HKL filename, rather than a stream. All three <>.[hkl, hkl1, hkl2]
+		should be present.
+	--nproc, -j
+		Number of processors to be used for merging. By default, output of 'nproc'.
+		If --nproc=0 or less, will use all availalbe and print warning.
+	--logs
+		A folder to write logs in. By default, logs/analyzer.<stream_md5sum>.<date>
+	--histogram
+		Whether to write histogram or not (0 or 1)
+	--cleanup
+		Whether you want to remove temporary files, such as concatenated stream,
+		after the run is finished
+Merging parameters:
+	--lowres, --highres
+		Low and high resolution for output merging statistics table
+	--highres
+	-y, --symmetry
+	--pushres
+	--highres_include
+	--min_cc
+	--iterations
+	--string_params
+		Parameters for either process_hkl or partialator provided as a string.
+		Warning: it is your duty to make sure you provide valid parameters for
+		the tool of your choice.
+"
+
+INPUT=""
+OUTPUT="oanalyzer_$(date +%F-%H-%M-%S)"
+CELL=""
+MERGING="none"
+RATE=""
+NPROC=`nproc`
+LOGS=""
+HISTOGRAM=1
+CLEANUP=1
+
+
+############################
+# READING INPUT PARAMETERS #
+############################
+while [[ $# -gt 0 ]]; do
+	key="$1"
+	# echo "..Current argument is ${key}"
+	case "$key" in 
+		-h|--help)
+			echo "${HELP_STRING}";
+			exit 0
+	shift
+	;;
+	#----------------------------------------
+		-i|--input)
+			if ! [ -f "$3" ]; then
+				echo "Single-stream mode"
+				INPUT="$2";
+				shift
+			else
+				num_streams=0
+				if [ -f "tmp.stream" ]; then 
+					echo "Removing tmp.stream" 
+					rm "tmp.stream"; fi
+				while [ -f "$2" ]; do
+					echo "    ...using $2 as part of input file"
+					cat "$2" >> 'tmp.stream'
+					let num_streams="$num_streams"+1
+					shift
+				done
+				echo "Multi-stream mode, $num_streams streams"
+				INPUT="tmp.stream";
+			fi
+	;; # there is no shift here for correct multi-stream input
+	#----------------------------------------
+		-o|--output)
+			OUTPUT="$2"
+	shift
+	;;
+	#----------------------------------------
+		-p|--cell)
+			CELL="$2"
+	shift
+	;;
+	#---------------------------------------- #
+		--merging)
+			MERGING="$2"
+			if [[ "$MERGING" != "none" ]] && [[ "$MERGING" != "partialator" ]] && [[ "$MERGING" != "process_hkl" ]]; then
+				echo "MERGING parameter should be either 'none' or 'process_hkl' or 'partialator'"; exit 1
+			fi
+	shift
+	;;
+	#----------------------------------------
+		--rate)
+			RATE="$2"
+	shift
+	;;
+	#----------------------------------------
+		--nproc|-j)
+			NPROC="$2"
+	shift
+	;;
+	#---------------------------------------- TODO: working on LOGS
+		--logs)
+			LOGS="$2"
+	shift
+	;;
+	#----------------------------------------
+	esac
+	shift # past argument or value
+done
+
+
+################################################
+# CHECKING THAT ALL INPUT PARAMETERS ARE VALID #
+################################################
+
+# check validity of OUTPUT
+if ! (touch "$OUTPUT" &> /dev/null); then
+	echo "Could not access output ${OUTPUT}, please check access right and/or folder structure"
+	exit 1
+else
+	rm "$OUTPUT"
+fi
+
+# check validity of CELL
+if ! [[ -f "$CELL" ]]; then
+	echo "Could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
+	echo "Will proceed using cell from the stream"
+	python3 extract_cell.py ${INPUT} > tmp."$OUTPUT".cell
+	cat tmp."$OUTPUT".cell
+else
+	rm "$OUTPUT" &> /dev/null
+	cat "$CELL"
+fi
+
+# check validity of RATE
+if [[ "$RATE" != "" ]] && [[ "$RATE" != "no" ]]; then
+	if ! [[ -f "${RATE}.hkl" ]]; then
+		echo "Could not existance, access output ${RATE}.hkl, please check existance, access right and/or folder structure"; exit 1;
+	elif ! [[ -f "${RATE}.hkl1" ]]; then
+		echo "Could not existance, access output ${RATE}.hkl1, please check existance, access right and/or folder structure"; exit 1
+	elif ! [[ -f "${RATE}.hkl2" ]]; then
+		echo "Could not existance, access output ${RATE}.hkl2, please check existance, access right and/or folder structure"; exit 1
+	else
+		:
+	fi
+fi
+
+# check validity of NPROC
+isnumber='^[0-9]+$'
+if ! [[ ${NPROC} =~ $isnumber ]] ; then
+	echo "NPROC should be a valid number, now <${NPROC}>"; exit 1; fi
+if [ ${NPROC} -gt `nproc` ]; then
+	echo "NPROC should be less or equal than maximum available `nproc`"; exit 1; fi
+if [ ${NPROC} -lt 1 ]; then
+	echo "Warning: will use all available processors, since you provided ${NPROC} < 1"; fi
+
+
+# check validity of LOGS
+if [[ "${LOGS}" == "" ]]; then
+	echo "You have not provided --logs, will use default value"
+	HASH=$(md5sum "${INPUT}" | head -c 6)
+	if ! [[ -d "logs" ]]; then echo "Warning: will create ./logs folder"; fi
+	LOGS="logs/analyzer.${HASH}.$(date +%F-%H-%M-%S)"
+	mkdir -p "${LOGS}"
+else
+	if [[ -d "$LOGS" ]]; then echo "Warning: folder <${LOGS}> exist, will not proceed"; exit 1; fi
+	mkdir -p "$LOGS"
+fi
+
+#################
+# RATE FUNCTION #
+#################
+
+
+
+###########
+# CLEANUP #
+###########
+if [ "$CLEANUP" ]; then 
+	echo "......."
+	echo "Removing according to tmp.${OUTPUT} mask"
+	rm tmp.${OUTPUT}* &> /dev/null
+fi
