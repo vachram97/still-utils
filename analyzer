@@ -81,7 +81,7 @@ OUTPUT="oanalyzer_$(date +%F-%H-%M-%S)"
 CELL=""
 MERGING="none"
 RATE=""
-NPROC=`nproc`
+NPROC=$(nproc)
 LOGS=""
 HISTOGRAM=1
 CLEANUP=1
@@ -209,9 +209,9 @@ fi
 isnumber='^[0-9]+$'
 if ! [[ ${NPROC} =~ $isnumber ]] ; then
 	echo "NPROC should be a valid number, now <${NPROC}>"; exit 1; fi
-if [ ${NPROC} -gt `nproc` ]; then
-	echo "NPROC should be less or equal than maximum available `nproc`"; exit 1; fi
-if [ ${NPROC} -lt 1 ]; then
+if [ "${NPROC}" -gt "$(nproc)" ]; then
+	echo "NPROC should be less or equal than maximum available $(nproc)"; exit 1; fi
+if [ "${NPROC}" -lt 1 ]; then
 	echo "Warning: will use all available processors, since you provided ${NPROC} < 1"; fi
 
 
@@ -250,5 +250,5 @@ if [ "$CLEANUP" -eq 0 ]; then
 else # no elif here -- validity check above guaranteers that else is enough
 	echo "......."
 	echo "Removing according to tmp.${OUTPUT} mask"
-	rm tmp.${OUTPUT}* &> /dev/null
+	rm "tmp.${OUTPUT}"* &> /dev/null
 fi
