@@ -244,10 +244,10 @@ if  [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
 ###########
 # CLEANUP #
 ###########
-if [[ "$CLEANUP" == 0 ]] || [[ "$CLEANUP" == "no" ]]; then 
+if [ "$CLEANUP" -eq 0 ]; then
 	echo "......."
 	echo "Warning: will not do cleanup"
-else
+else # no elif here -- validity check above guaranteers that else is enough
 	echo "......."
 	echo "Removing according to tmp.${OUTPUT} mask"
 	rm tmp.${OUTPUT}* &> /dev/null
