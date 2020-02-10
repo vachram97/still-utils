@@ -64,12 +64,11 @@ Workflow parameters:
 Merging parameters:
 	--lowres, --highres
 		Low and high resolution for output merging statistics table
-	--highres
-	-y, --symmetry
 	--pushres
+	--iterations
 	--highres_include
 	--min_cc
-	--iterations
+	-y, --symmetry
 	--string_params
 		Parameters for either process_hkl or partialator provided as a string.
 		Warning: it is your duty to make sure you provide valid parameters for
@@ -90,7 +89,7 @@ LOWRES=""
 HIGHRES=""
 SYMMETRY=""
 PUSHRES=""
-HIGHERS_INCLUDE=""
+HIGHRES_INCLUDE=""
 MIN_CC=""
 ITERATIONS=""
 STRING_PARAMS=""
@@ -181,6 +180,26 @@ while [[ $# -gt 0 ]]; do
 			HIGHRES="$2"
 	shift
 	;;
+	#---------------------------------------- TODO: working on PUSHRES
+		--pushres)
+			PUSHRES="$2"
+	shift
+	;;
+	#---------------------------------------- TODO: working on ITERATIONS
+		--iterations)
+			ITERATIONS="$2"
+	shift
+	;;
+	#---------------------------------------- TODO: working on HIGHRES_INCLUDE
+		--highres_include)
+			HIGHRES_INCLUDE="$2"
+	shift
+	;;
+	#---------------------------------------- TODO: working on MIN_CC
+		--min_cc)
+			MIN_CC="$2"
+	shift
+	;;
 	#----------------------------------------
 	esac
 	shift # past argument or value
@@ -251,20 +270,59 @@ if  [ "$HISTOGRAM" -ne 1 ] && [ "$HISTOGRAM" -ne 0 ]; then
 if  [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
 	echo "Error: CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."; exit 1; fi
 
-# check validity of LOWRES and HIGHERS
-is_float='^[1-9][0-9]*\.[0-9]*$'
+# check validity of LOWRES and HIGHRES
+is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${LOWRES} == "" ]]; then
 	echo "Warning: LOWRES will be 30.0 by default"
 	LOWRES=30.0; fi
 if [[ ${HIGHRES} == "" ]]; then
 	echo "Warning: HIGHRES will be 3.0 by default"
 	HIGHRES=3.0; fi
-if ! [[ ${LOWRES} =~ $is_float ]]; then
+if ! [[ ${LOWRES} =~ $is_float_positive ]]; then
 	echo "Error: LOWRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
-if ! [[ ${HIGHRES} =~ $is_float ]]; then
+if ! [[ ${HIGHRES} =~ $is_float_positive ]]; then
 	echo "Error: HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"; exit 1; fi
 if (( $(echo "${HIGHRES} >= ${LOWRES}" |bc -l) )); then
-	echo "Error: HIGHERS >= LOWRES"; exit 1; fi
+	echo "Error: HIGHRES >= LOWRES"; exit 1; fi
+
+# check validity of PUSHRES
+is_float_positive='^[0-9]*\.[0-9]*$'
+if [[ ${PUSHRES} == "" ]]; then
+	echo "Warning: will use default PUSHRES=1.0"; PUSHRES=1.0; fi
+if ! [[ ${PUSHRES} =~ $is_float_positive ]]; then
+	echo "Error: PUSHRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+
+# check validity of ITERATIONS
+is_integer='^[0-9]+$'
+if [[ ${ITERATIONS} == "" ]]; then
+	echo "Warning: will use default ITERATIONS=0"; ITERATIONS=0; fi
+if ! [[ ${ITERATIONS} =~ $is_integer ]]; then
+	echo "Error: ITERATIONS should be valid integer number, e.g. 3 (but '03' or '3.' would be invalid)"; exit 1; 
+elif [ ${ITERATIONS} -ge 3 ]; then
+	echo "Warning: are you sure ITERATIONS should be more than 2? It may cause unstable merging and scaling"
+fi
+
+# check validity of HIGHRES_INCLUDE
+is_float_positive='^[0-9]*\.[0-9]*$'
+if [[ ${HIGHRES_INCLUDE} == "" ]]; then
+	echo "Warning: will use default HIGHRES_INCLUDE=100.0 (basically, include all possible resolutions)"; 
+	HIGHRES_INCLUDE=100.0; 
+fi
+if ! [[ ${HIGHRES_INCLUDE} =~ $is_float_positive ]]; then
+	echo "Error: HIGHRES_INCLUDE should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+
+# check validity of MIN_CC
+is_float='^\-{0,1}[0-9]*\.[0-9]*$'
+if [[ ${MIN_CC} == "" ]]; then
+	echo "Warning: will use default MIN_CC=-1.0"; MIN_CC=-1.0; fi
+if ! [[ ${MIN_CC} =~ $is_float ]]; then
+	echo "$MIN_CC"
+	echo "Error: MIN_CC should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+if (( $(echo "${MIN_CC} > 1.0" |bc -l) )) || (( $(echo "${MIN_CC} < -1.0" |bc -l) )); then
+	echo "Error: |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"; exit 1; fi
+
+
+
 
 #################
 # RATE FUNCTION #
