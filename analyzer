@@ -85,7 +85,15 @@ NPROC=$(nproc)
 LOGS=""
 HISTOGRAM=1
 CLEANUP=1
-
+#---------
+LOWRES=""
+HIGHRES=""
+SYMMETRY=""
+PUSHRES=""
+HIGHERS_INCLUDE=""
+MIN_CC=""
+ITERATIONS=""
+STRING_PARAMS=""
 
 ############################
 # READING INPUT PARAMETERS #
@@ -164,6 +172,16 @@ while [[ $# -gt 0 ]]; do
 	shift
 	;;
 	#----------------------------------------
+		--lowres)
+			LOWRES="$2"
+	shift
+	;;
+	#----------------------------------------
+		--highres)
+			HIGHRES="$2"
+	shift
+	;;
+	#----------------------------------------
 	esac
 	shift # past argument or value
 done
@@ -175,42 +193,40 @@ done
 
 # check validity of OUTPUT
 if ! (touch "$OUTPUT" &> /dev/null); then
-	echo "Could not access output ${OUTPUT}, please check access right and/or folder structure"
-	exit 1
+	echo "Error: could not access output ${OUTPUT}, please check access right and/or folder structure"; exit 1
 else
 	rm "$OUTPUT"
 fi
 
 # check validity of CELL
 if ! [[ -f "$CELL" ]]; then
-	echo "Could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
-	echo "Will proceed using cell from the stream"
+	echo "Warning: could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
+	echo "Warning: will proceed using cell from the stream"
 	python3 extract_cell.py ${INPUT} > tmp."$OUTPUT".cell
 	cat tmp."$OUTPUT".cell
 else
 	rm "$OUTPUT" &> /dev/null
-	cat "$CELL"
 fi
 
 # check validity of RATE
 if [[ "$RATE" != "" ]] && [[ "$RATE" != "no" ]]; then
 	if ! [[ -f "${RATE}.hkl" ]]; then
-		echo "Could not existance, access output ${RATE}.hkl, please check existance, access right and/or folder structure"; exit 1;
+		echo "Erorr: could not existance, access output ${RATE}.hkl, please check existance, access right and/or folder structure"; exit 1;
 	elif ! [[ -f "${RATE}.hkl1" ]]; then
-		echo "Could not existance, access output ${RATE}.hkl1, please check existance, access right and/or folder structure"; exit 1
+		echo "Error: could not existance, access output ${RATE}.hkl1, please check existance, access right and/or folder structure"; exit 1
 	elif ! [[ -f "${RATE}.hkl2" ]]; then
-		echo "Could not existance, access output ${RATE}.hkl2, please check existance, access right and/or folder structure"; exit 1
+		echo "Error: could not existance, access output ${RATE}.hkl2, please check existance, access right and/or folder structure"; exit 1
 	else
 		:
 	fi
 fi
 
 # check validity of NPROC
-isnumber='^[0-9]+$'
-if ! [[ ${NPROC} =~ $isnumber ]] ; then
-	echo "NPROC should be a valid number, now <${NPROC}>"; exit 1; fi
+is_integer='^[0-9]+$'
+if ! [[ ${NPROC} =~ $is_integer ]] ; then
+	echo "Erorr: NPROC should be a valid number, now <${NPROC}>"; exit 1; fi
 if [ "${NPROC}" -gt "$(nproc)" ]; then
-	echo "NPROC should be less or equal than maximum available $(nproc)"; exit 1; fi
+	echo "Error: NPROC should be less or equal than maximum available $(nproc)"; exit 1; fi
 if [ "${NPROC}" -lt 1 ]; then
 	echo "Warning: will use all available processors, since you provided ${NPROC} < 1"; fi
 
@@ -223,17 +239,32 @@ if [[ "${LOGS}" == "" ]]; then
 	LOGS="logs/analyzer.${HASH}.$(date +%F-%H-%M-%S)"
 	mkdir -p "${LOGS}"
 else
-	if [[ -d "$LOGS" ]]; then echo "Warning: folder <${LOGS}> exist, will not proceed"; exit 1; fi
+	if [[ -d "$LOGS" ]]; then echo "Error: folder <${LOGS}> exist, will not proceed"; exit 1; fi
 	mkdir -p "$LOGS"
 fi
 
 # check validity of HISTOGRAM
 if  [ "$HISTOGRAM" -ne 1 ] && [ "$HISTOGRAM" -ne 0 ]; then
-	echo "HISTOGRAM should be either 1 or 0, you provided <${HISTOGRAM}>."; exit 0; fi
+	echo "Error: HISTOGRAM should be either 1 or 0, you provided <${HISTOGRAM}>."; exit 1; fi
 
 # check validity of CLEANUP
 if  [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
-	echo "CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."; exit 0; fi
+	echo "Error: CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."; exit 1; fi
+
+# check validity of LOWRES and HIGHERS
+is_float='^[1-9][0-9]*\.[0-9]*$'
+if [[ ${LOWRES} == "" ]]; then
+	echo "Warning: LOWRES will be 30.0 by default"
+	LOWRES=30.0; fi
+if [[ ${HIGHRES} == "" ]]; then
+	echo "Warning: HIGHRES will be 3.0 by default"
+	HIGHRES=3.0; fi
+if ! [[ ${LOWRES} =~ $is_float ]]; then
+	echo "Error: LOWRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+if ! [[ ${HIGHRES} =~ $is_float ]]; then
+	echo "Error: HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"; exit 1; fi
+if (( $(echo "${HIGHRES} >= ${LOWRES}" |bc -l) )); then
+	echo "Error: HIGHERS >= LOWRES"; exit 1; fi
 
 #################
 # RATE FUNCTION #
