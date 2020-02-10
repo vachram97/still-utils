@@ -339,10 +339,33 @@ if (( $(echo "${MIN_CC} > 1.0" |bc -l) )) || (( $(echo "${MIN_CC} < -1.0" |bc -l
 
 
 
-
 #################
 # RATE FUNCTION #
 #################
+
+
+# PART WHERE I DO STREAM ANALYTICS
+# LATTICES
+#	- per-indexer dictribution
+#	- average unit cell
+#	- average unit cell for every lattice type
+# 	- number of images for processing
+#	- number of processed images (and full list)
+#	- number of indexed images (and full list)
+#	- number of images with multiple crystals (and full list)
+#	- fraction of multiple hits
+# PART WHERE I DRAW HISTOGRAMS
+#	- indexed resolution histogram
+#	- non-indexed resolution histogram
+#	- full resolution histogram
+# PART WHERE I EXECUTE EXTERNAL SCRIPTS
+#	- detector-shift -- compare shifted and non-shifted values
+#	- multicrystal_validate -- access quality of multi-crystal indexing
+
+
+# PART WHERE I MERGE THE DATA
+
+# PART WHERE I ACCESS THE MERGED DATA QUALITY
 
 
 
