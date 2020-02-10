@@ -1,7 +1,8 @@
 #!/bin/bash
 
 HELP_STRING="\
-This is a wrapper script for CrystFEL-based processing of SFX data.
+This is a wrapper script for CrystFEL-based processing of SFX data, written by Egor Marin @marinegor.
+Please contact me via marin@phystech.edu or github, if you know any issue.
 
 It provides you with extensive information about your stream file
 and merging statistics without usage of GUI.
@@ -61,14 +62,29 @@ Workflow parameters:
 	--cleanup
 		Whether you want to remove temporary files, such as concatenated stream,
 		after the run is finished. Should be 0 or 1 (1 by default -- will clean up).
+-------------------
 Merging parameters:
+-------------------
 	--lowres, --highres
 		Low and high resolution for output merging statistics table
 	--pushres
+		Merges reflections of higher than resolution_limit for each particular crystal,
+		as predicted by peakfinder8 or peakfinder9.
+		Quote from the process_hkl man:
+		\"Merge reflections which are up to n nm^-1 higher than the apparent resolution limit of each individual crystal.
+		 n can be negative to merge lower than the apparent resolution limit.\"
+		However, negative is yet disabled by this script, since it hasn't been useful so far.
 	--iterations
+		Number of iterations for scaling (used by partialator only)
 	--highres_include
+		Include in final merging only those crystals that have crystfel-predicted resolution higher than that.
+		Used by process_hkl only (--min-res in man), partialator does not have this feature.
 	--min_cc
+		Quote from process_hkl man:
+		 \"Perform a second pass through the input, merging crystals only if their correlation with the initial model is at least n.\"
 	-y, --symmetry
+		Symmetry for merging. 
+		Used by process_hkl/partialator and compare_hkl and check_hkl.
 	--string_params
 		Parameters for either process_hkl or partialator provided as a string.
 		Warning: it is your duty to make sure you provide valid parameters for
