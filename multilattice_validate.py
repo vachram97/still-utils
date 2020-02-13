@@ -3,6 +3,8 @@
 import numpy as np
 import rmsd
 from tqdm import tqdm
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import connected_components
 from typing import Dict, List
 
 
@@ -77,3 +79,27 @@ def read_stream(filename: str) -> Dict:
                 continue
 
     return database
+
+
+def get_angle(vecs1, vecs2):
+    """Returns rotation angle between two vector sets, representing inverse lattices"""
+
+    # https://en.wikipedia.org/wiki/Rotation_matrix#Determining_the_angle
+    return np.rad2deg(np.arccos((np.trace(rmsd.kabsch(vecs1, vecs2)) - 1) / 2))
+
+
+def number_of_different_inverse_cells(vectors_set, rmsd_threshold=np.deg2rad(5.0)):
+    """\
+    Returns number of actually different cells in a given set,
+    where cells that differ on rotation of less than `rmsd` radians are
+    considered same
+    """
+    rmsd_matrix = [
+        [1 if get_angle(v1, v2) < rmsd_threshold else 0 for v1 in vectors_set]
+        for v2 in vectors_set
+    ]
+    graph = csr_matrix(rmsd_matrix)
+    n_components = connected_components(
+        csgraph=graph, directed=False, return_labels=False
+    )
+    return n_components
