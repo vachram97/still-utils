@@ -2,17 +2,18 @@
 
 import numpy as np
 import rmsd
+import sys
 from tqdm import tqdm
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 from typing import Dict, List
+import argparse
 
 
 def read_stream(filename: str) -> Dict:
     """\
     Read stream and return dictionary {image_tag:[unit_cell_1, unit_cell_2,...]}
     """
-
     begin_chunk = lambda s: "Begin chunk" in s
     end_chunk = lambda s: "End chunk" in s
     begin_crystal = lambda s: "Begin crystal" in s
@@ -103,3 +104,35 @@ def number_of_different_inverse_cells(vectors_set, rmsd_threshold=np.deg2rad(5.0
         csgraph=graph, directed=False, return_labels=False
     )
     return n_components
+
+
+def main(args: List[str]):
+    parser = argparse.ArgumentParser(
+        description="Estimate number of falsely-multiple lattices"
+    )
+    parser.add_argument("stream", help="Input stream")
+    parser.add_argument(
+        "--rmsd",
+        type=float,
+        default=5.0,
+        help="RMSD (in deg) between 2 inverse lattices to be treated as separate ones",
+    )
+    args = parser.parse_args()
+    parsed_stream = read_stream(args.stream)
+    parsed_lattices = [chunk[0] for chunk in parsed_stream if len(chunk) > 1]
+    max_lattices_on_one_crystal = max([len(i) for i in parsed_lattices])
+
+    for num_lattices in range(max_lattices_on_one_crystal):
+        selected_lattices = [
+            elem for elem in parsed_lattices if len(elem) == num_lattices
+        ]
+        components = [
+            number_of_different_inverse_cells(elem) for elem in selected_lattices
+        ]
+        print(
+            f"Crystals on image: {num_lattices}, total images: {len(selected_lattices)}, total lattices: {sum(components)}, false lattices: {len(selected_lattices)-sum(components)}"
+        )
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
