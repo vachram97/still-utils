@@ -338,22 +338,51 @@ if (( $(echo "${MIN_CC} > 1.0" |bc -l) )) || (( $(echo "${MIN_CC} < -1.0" |bc -l
 	echo "Error: |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"; exit 1; fi
 
 
-
-#################
-# RATE FUNCTION #
-#################
-
-
+#----------------------------------------------------------------------------------------------
 # PART WHERE I DO STREAM ANALYTICS
-# LATTICES
 #	- per-indexer dictribution
+
+NIMAGES=$(grep -a "Begin chunk" "$INPUT" -c)
+NCRYST=$(grep -a "Begin crystal" "$INPUT" -c)
+METHODS=($(grep -E -a "indexed_by" "$INPUT" | grep -a -v 'none' | sort | uniq | awk 'NF>1{print $NF}' | tr '\n' ' '))
+NINDEXED=0
+
+echo "================"
+echo "Indexer details"
+echo "================"
+for method in "${METHODS[@]}"; do
+	if [ "$method" = "none" ]; then continue; fi
+
+	tmp="$(grep -E -c -a -w "$method" "$INPUT")"	
+	let "NINDEXED=$NINDEXED+$tmp"
+	ratio=$(echo " scale=3; $tmp/$NIMAGES" | bc)
+	echo -e "$ratio" "\t" "$tmp" "\t" "$method"
+done
+
+pythonstring='from __future__ import print_function; print(*[i.split("-i")[1].split()[0] for i in open("'$INPUT'").readlines() if "indexamajig" in i],sep="\n")'
+NIMAGES_INPUT=$(python -c "$pythonstring" | xargs wc -l 2> /dev/null | tail -1 | awk '{print $1}') 
+if [[ "$NIMAGES_INPUT" -eq 0 ]]; then
+	NIMAGES_INPUT="n/a (file lists not available)"; fi 
+
+# 	- number of images for processing
+#	- fraction of multiple hits
+echo "================"
+echo "Indexing summary"
+echo "================"
+echo "Images for processing:      ${NIMAGES_INPUT}"
+echo "Number of processed images: ${NIMAGES}"
+echo "Number of indexed images:   ${NINDEXED}"
+echo "Number of crystals:  ${NCRYST}"
+echo "Image indexing rate: $(echo "scale=2; ${NINDEXED}/${NIMAGES}" | bc)"
+echo "Crystals percentage: $(echo "scale=2; ${NCRYST}/${NIMAGES}" | bc)"
+
+
+# LATTICES
 #	- average unit cell
 #	- average unit cell for every lattice type
-# 	- number of images for processing
 #	- number of processed images (and full list)
 #	- number of indexed images (and full list)
 #	- number of images with multiple crystals (and full list)
-#	- fraction of multiple hits
 # PART WHERE I DRAW HISTOGRAMS
 #	- indexed resolution histogram
 #	- non-indexed resolution histogram
@@ -366,6 +395,9 @@ if (( $(echo "${MIN_CC} > 1.0" |bc -l) )) || (( $(echo "${MIN_CC} < -1.0" |bc -l
 # PART WHERE I MERGE THE DATA
 
 # PART WHERE I ACCESS THE MERGED DATA QUALITY
+#################
+# RATE FUNCTION #
+#################
 
 
 
@@ -379,4 +411,5 @@ else # no elif here -- validity check above guaranteers that else is enough
 	echo "......."
 	echo "Removing according to tmp.${OUTPUT} mask"
 	rm "tmp.${OUTPUT}"* &> /dev/null
+	rm tmp.stream
 fi
