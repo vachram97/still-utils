@@ -119,18 +119,22 @@ def main(args: List[str]):
     )
     args = parser.parse_args()
     parsed_stream = read_stream(args.stream)
-    parsed_lattices = [chunk[0] for chunk in parsed_stream if len(chunk) > 1]
+    parsed_lattices = [[elem[0] for elem in chunk] for chunk in parsed_stream.values()]
     max_lattices_on_one_crystal = max([len(i) for i in parsed_lattices])
 
-    for num_lattices in range(max_lattices_on_one_crystal):
+    for num_lattices in range(2, max_lattices_on_one_crystal):
         selected_lattices = [
             elem for elem in parsed_lattices if len(elem) == num_lattices
         ]
         components = [
-            number_of_different_inverse_cells(elem) for elem in selected_lattices
+            number_of_different_inverse_cells(elem, rmsd_threshold=args.rmsd)
+            for elem in selected_lattices
         ]
         print(
-            f"Crystals on image: {num_lattices}, total images: {len(selected_lattices)}, total lattices: {sum(components)}, false lattices: {len(selected_lattices)-sum(components)}"
+            f"Crystals on image: {num_lattices}, "
+            f"total images: {len(selected_lattices)}, "
+            f"total lattices: {sum(components)/num_lattices}, "
+            f"false multiples: {len(selected_lattices)-sum(components)/num_lattices}"
         )
 
 
