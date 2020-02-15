@@ -8,9 +8,10 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 from typing import Dict, List
 import argparse
+import warnings
 
 
-def read_stream(filename: str) -> Dict:
+def read_stream(filename: str, print_multiples=None) -> Dict:
     """\
     Read stream and return dictionary {image_tag:[unit_cell_1, unit_cell_2,...]}
     """
@@ -34,6 +35,7 @@ def read_stream(filename: str) -> Dict:
     current_event = None  # to handle non-event streams
     current_chunk_crystals = []
     database = {}
+    list_of_multiples_to_print = []
 
     for line_num, line in tqdm(enumerate(open(filename)), "Reading stream"):
         if begin_chunk(line) or begin_crystal(line) or end_crystal(line):
@@ -76,8 +78,15 @@ def read_stream(filename: str) -> Dict:
                         else current_filename
                     )
                     database[image_id] = current_chunk_crystals
+                if print_multiples is not None and len(current_chunk_crystals) > 1:
+                    list_of_multiples_to_print.append(image_id)
                 current_chunk_crystals = []
                 continue
+
+    if print_multiples is not None:
+        with open(print_multiples, "w") as fout:
+            print(f"Full list of multiple hits is here: {print_multiples}")
+            print(*list_of_multiples_to_print, sep="\n", file=fout)
 
     return database
 
@@ -112,13 +121,16 @@ def main(args: List[str]):
     )
     parser.add_argument("stream", help="Input stream")
     parser.add_argument(
+        "--out", default=None, help="Out list of multiple hits in a separate file",
+    )
+    parser.add_argument(
         "--rmsd",
         type=float,
         default=5.0,
         help="RMSD (in deg) between 2 inverse lattices to be treated as separate ones",
     )
     args = parser.parse_args()
-    parsed_stream = read_stream(args.stream)
+    parsed_stream = read_stream(args.stream, print_multiples=args.out)
     parsed_lattices = [[elem[0] for elem in chunk] for chunk in parsed_stream.values()]
     max_lattices_on_one_crystal = max([len(i) for i in parsed_lattices])
 
@@ -139,4 +151,5 @@ def main(args: List[str]):
 
 
 if __name__ == "__main__":
+    warnings.filterwarnings("ignore")
     main(sys.argv[1:])
