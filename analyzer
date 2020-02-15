@@ -196,24 +196,34 @@ while [[ $# -gt 0 ]]; do
 			HIGHRES="$2"
 	shift
 	;;
-	#---------------------------------------- TODO: working on PUSHRES
+	#---------------------------------------- 
 		--pushres)
 			PUSHRES="$2"
 	shift
 	;;
-	#---------------------------------------- TODO: working on ITERATIONS
+	#----------------------------------------
 		--iterations)
 			ITERATIONS="$2"
 	shift
 	;;
-	#---------------------------------------- TODO: working on HIGHRES_INCLUDE
+	#----------------------------------------
 		--highres_include)
 			HIGHRES_INCLUDE="$2"
 	shift
 	;;
-	#---------------------------------------- TODO: working on MIN_CC
+	#----------------------------------------
 		--min_cc)
 			MIN_CC="$2"
+	shift
+	;;
+	#----------------------------------------
+		--string_params)
+			STRING_PARAMS="$2"
+	shift
+	;;
+	#----------------------------------------
+		--symmetry)
+			SYMMETRY="$2"
 	shift
 	;;
 	#----------------------------------------
@@ -377,12 +387,22 @@ echo "Image indexing rate: $(echo "scale=2; ${NINDEXED}/${NIMAGES}" | bc)"
 echo "Crystals percentage: $(echo "scale=2; ${NCRYST}/${NIMAGES}" | bc)"
 
 
-# LATTICES
-#	- average unit cell
-#	- average unit cell for every lattice type
+echo "======================="
+echo "Spitting out some lists"
+echo "======================="
+
 #	- number of processed images (and full list)
 #	- number of indexed images (and full list)
-#	- number of images with multiple crystals (and full list)
+for method in "${METHODS[@]}"; do
+	if [[ $(grep -c "Event" ${INPUT}) -gt 3 ]]; then
+		grep "indexed_by = ${method}" ${INPUT} -B 4 | grep "Image filename\|Event" | grep "Image\|Event" | sed 'N;s/\n/ /' | awk '{print $3, $5}' > "$LOGS"/"$OUTPUT".${method}.lst
+	else
+		grep "indexed_by = ${method}" ${INPUT} -B 3 | grep "Image filename" | grep "Image" | awk '{print $3, $5}' > "$LOGS"/"$OUTPUT".${method}.lst
+	fi
+	echo "Indexed by $method here:         ${LOGS}/${OUTPUT}.${method}.lst"
+done
+
+# LATTICES
 # PART WHERE I DRAW HISTOGRAMS
 #	- indexed resolution histogram
 #	- non-indexed resolution histogram
@@ -390,6 +410,7 @@ echo "Crystals percentage: $(echo "scale=2; ${NCRYST}/${NIMAGES}" | bc)"
 # PART WHERE I EXECUTE EXTERNAL SCRIPTS
 #	- detector-shift -- compare shifted and non-shifted values
 #	- multicrystal_validate -- access quality of multi-crystal indexing
+#	- number of images with multiple crystals (and full list)
 
 
 # PART WHERE I MERGE THE DATA
@@ -411,5 +432,5 @@ else # no elif here -- validity check above guaranteers that else is enough
 	echo "......."
 	echo "Removing according to tmp.${OUTPUT} mask"
 	rm "tmp.${OUTPUT}"* &> /dev/null
-	rm tmp.stream
+	if [[ -f tmp.stream ]]; then rm tmp.stream; fi
 fi
