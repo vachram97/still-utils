@@ -134,20 +134,50 @@ def main(args: List[str]):
     parsed_lattices = [[elem[0] for elem in chunk] for chunk in parsed_stream.values()]
     max_lattices_on_one_crystal = max([len(i) for i in parsed_lattices])
 
-    for num_lattices in range(2, max_lattices_on_one_crystal):
-        selected_lattices = [
+    acc_total_images, acc_total_crystals, acc_true_crystals, acc_false_crystals = (
+        0,
+        0,
+        0,
+        0,
+    )
+
+    for num_lattices in range(2, max_lattices_on_one_crystal + 1):
+        multiple_lattices = [
             elem for elem in parsed_lattices if len(elem) == num_lattices
         ]
-        components = [
+        unique_cells = [
             number_of_different_inverse_cells(elem, rmsd_threshold=args.rmsd)
-            for elem in selected_lattices
+            for elem in multiple_lattices
         ]
+        total_images = len(multiple_lattices)
+        total_crystals = total_images * num_lattices
+        true_crystals = sum(unique_cells)
+        false_crystals = total_crystals - true_crystals
         print(
-            f"Crystals on image: {num_lattices}, "
-            f"total images: {len(selected_lattices)}, "
-            f"total lattices: {sum(components)/num_lattices}, "
-            f"false multiples: {len(selected_lattices)-sum(components)/num_lattices}"
-        )
+            f"For {num_lattices} crystals on image "
+            f"total images: {total_images}, "
+            f"total crystals: {total_crystals}, "
+            f"true crystals: {true_crystals}, "
+            f"false_crystals: {false_crystals}"
+        )  # this will print everythin on one line -- notice commas are abscent
+
+        acc_total_images += total_images
+        acc_total_crystals += total_crystals
+        acc_true_crystals += true_crystals
+        acc_false_crystals += false_crystals
+
+    print("-" * 80)
+    print(
+        f"For n > 1 crystals on image "
+        f"total images: {acc_total_images}, "
+        f"total crystals: {acc_total_crystals}, "
+        f"true crystals: {acc_true_crystals}, "
+        f"false_crystals: {acc_false_crystals}"
+    )  # this will print everythin on one line -- notice commas are abscent
+    false_crystal_ratio = acc_false_crystals / acc_total_crystals
+    print(f"False crystal ratio: {false_crystal_ratio:1.2f}")
+    if false_crystal_ratio > 0.5:
+        print("Warning: more than a half crystals are falce multiples")
 
 
 if __name__ == "__main__":
