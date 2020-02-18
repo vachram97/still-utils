@@ -109,6 +109,7 @@ HIGHRES_INCLUDE=""
 MIN_CC=""
 ITERATIONS=""
 STRING_PARAMS=""
+MULTI_RMSD=5.0 # TODO: add parsing of MULTI_RMSD
 
 ############################
 # READING INPUT PARAMETERS #
@@ -402,15 +403,26 @@ for method in "${METHODS[@]}"; do
 	echo "Indexed by $method here:         ${LOGS}/${OUTPUT}.${method}.lst"
 done
 
-# LATTICES
+
+# TODO: working on calling external validation tools
+# -multilattice_validate.py (this repo)
+
+if [[ -f ./multilattice_validate.py ]]; then
+	./multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/${OUTPUT}.multiples.lst"
+elif `command -v multilattice_validate.py 2>/dev/null`;  then
+	multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/${OUTPUT}.multiples.lst"
+else
+	echo "Warning: 'multilattice_validate.py' is not in current or path, won\'t be used"
+fi
+
+# PART WHERE I EXECUTE EXTERNAL SCRIPTS
+#	- detector-shift -- compare shifted and non-shifted values
+#	- multicrystal_validate -- access quality of multi-crystal indexing
+#		- number of images with multiple crystals (and full list)
 # PART WHERE I DRAW HISTOGRAMS
 #	- indexed resolution histogram
 #	- non-indexed resolution histogram
 #	- full resolution histogram
-# PART WHERE I EXECUTE EXTERNAL SCRIPTS
-#	- detector-shift -- compare shifted and non-shifted values
-#	- multicrystal_validate -- access quality of multi-crystal indexing
-#	- number of images with multiple crystals (and full list)
 
 
 # PART WHERE I MERGE THE DATA
