@@ -1,0 +1,15 @@
+# CrystFEL-related files
+*.stream
+*.lst
+*.cxi
+*.h5
+*.geom
+*.cell
+*.pdb
+
+# Standard processing folders
+streams
+logs
+
+# Python stuff
+__pycache__
