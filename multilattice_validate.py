@@ -85,7 +85,7 @@ def read_stream(filename: str, print_multiples=None) -> Dict:
                 current_chunk_crystals = []
                 continue
 
-    if print_multiples is not None:
+    if print_multiples is not None and len(list_of_multiples_to_print) > 0:
         with open(print_multiples, "w") as fout:
             print(f"Full list of multiple hits is here: {print_multiples}")
             print(*list_of_multiples_to_print, sep="\n", file=fout)
