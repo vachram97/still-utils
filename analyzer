@@ -109,6 +109,7 @@ HIGHRES_INCLUDE=""
 MIN_CC=""
 ITERATIONS=""
 STRING_PARAMS=""
+MODEL="unity"  # TODO: add parsing of MODEL for partialator
 MULTI_RMSD=5.0 # TODO: add parsing of MULTI_RMSD
 
 ############################
@@ -244,12 +245,24 @@ else
 	rm "$OUTPUT"
 fi
 
+# check validity of LOGS
+if [[ "${LOGS}" == "" ]]; then
+	echo "You have not provided --logs, will use default value"
+	HASH=$(md5sum "${INPUT}" | head -c 6)
+	if ! [[ -d "logs" ]]; then echo "Warning: will create ./logs folder"; fi
+	LOGS="logs/analyzer.${HASH}.$(date +%F-%H-%M-%S)"
+	mkdir -p "${LOGS}"
+else
+	if [[ -d "$LOGS" ]]; then echo "Error: folder <${LOGS}> exist, will not proceed"; exit 1; fi
+	mkdir -p "$LOGS"
+fi
+
 # check validity of CELL
 if ! [[ -f "$CELL" ]]; then
 	echo "Warning: could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
 	echo "Warning: will proceed using cell from the stream"
-	python3 extract_cell.py ${INPUT} > tmp."$OUTPUT".cell
-	cat tmp."$OUTPUT".cell
+	python3 extract_cell.py ${INPUT} > "${LOGS}/${OUTPUT}".cell
+	echo "Warning: using cell ${LOGS}/${OUTPUT}.cell -- check if it's correct"
 else
 	rm "$OUTPUT" &> /dev/null
 fi
@@ -275,19 +288,6 @@ if [ "${NPROC}" -gt "$(nproc)" ]; then
 	echo "Error: NPROC should be less or equal than maximum available $(nproc)"; exit 1; fi
 if [ "${NPROC}" -lt 1 ]; then
 	echo "Warning: will use all available processors, since you provided ${NPROC} < 1"; fi
-
-
-# check validity of LOGS
-if [[ "${LOGS}" == "" ]]; then
-	echo "You have not provided --logs, will use default value"
-	HASH=$(md5sum "${INPUT}" | head -c 6)
-	if ! [[ -d "logs" ]]; then echo "Warning: will create ./logs folder"; fi
-	LOGS="logs/analyzer.${HASH}.$(date +%F-%H-%M-%S)"
-	mkdir -p "${LOGS}"
-else
-	if [[ -d "$LOGS" ]]; then echo "Error: folder <${LOGS}> exist, will not proceed"; exit 1; fi
-	mkdir -p "$LOGS"
-fi
 
 # check validity of HISTOGRAM
 if  [ "$HISTOGRAM" -ne 1 ] && [ "$HISTOGRAM" -ne 0 ]; then
@@ -409,7 +409,7 @@ done
 
 if [[ -f ./multilattice_validate.py ]]; then
 	./multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/${OUTPUT}.multiples.lst"
-elif `command -v multilattice_validate.py 2>/dev/null`;  then
+elif command -v multilattice_validate.py 2>/dev/null;  then
 	multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/${OUTPUT}.multiples.lst"
 else
 	echo "Warning: 'multilattice_validate.py' is not in current or path, won\'t be used"
@@ -426,11 +426,66 @@ fi
 
 
 # PART WHERE I MERGE THE DATA
+if [[ "$MERGING" == "partialator" ]]; then
+	# runs partialator to estimate rmeas and other foms
+	MERGING_COMMAND="partialator \
+-i $INPUT \
+-o ${LOGS}/${OUTPUT}.hkl \
+--iterations=$ITERATIONS \
+-j $NPROC \
+--model=$MODEL  \
+--push-res=$PUSHRES \
+--symmetry=$SYMMETRY \
+--min-res=${HIGHRES_INCLUDE} \
+${STRING_PARAMS}"
+	echo "Merging with following command: ${MERGING_COMMAND}"
+	eval "${MERGING_COMMAND}" 2>&1 | tee "${LOGS}/${OUTPUT}_partialator.log"
+
+elif [[ "$MERGING" == "process_hkl" ]]; then
+	MERGING_COMMAND="process_hkl \
+-i $INPUT \
+--push-res=$PUSHRES \
+--symmetry=$SYMMETRY \
+--min-res=${HIGHRES_INCLUDE} \
+--min-cc=${MIN_CC} \
+${STRING_PARAMS}"
+	echo "Merging with following command: ${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl"
+	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl"              2>&1 | tee "${LOGS}/${OUTPUT}_process_hkl.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl1 --odd-only"  2>&1 | tee "${LOGS}/${OUTPUT}_process_hkl1.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl2 --even-only" 2>&1 | tee "${LOGS}/${OUTPUT}_process_hkl2.log"
+else
+	:
+fi	
+
+# TODO: check whether data have been properly merged
+
+
+
 
 # PART WHERE I ACCESS THE MERGED DATA QUALITY
 #################
 # RATE FUNCTION #
 #################
+
+# outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
+# TODO: correct function rate in order to save logs & give results properly
+function rate() {
+	rm stats[0-9].dat &>/dev/null
+        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats1.dat
+        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats2.dat
+        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats3.dat
+        check_hkl tmp.hkl -y "$symmetry" -p "$cell"                                       --lowres="$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat > stats4.dat
+
+        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats5.dat
+        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats6.dat
+        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat >> stats7.dat
+        check_hkl tmp.hkl --nshells 1 -y "$symmetry" -p "$cell"                          --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >> stats8.dat
+	paste stats4.dat <(awk '{print $3'} stats1.dat) <(awk '{print $3'} stats2.dat) <(awk '{print $3'} stats3.dat) | head -1        > overall_stats.csv
+	paste stats4.dat  <(awk '{print $2}' stats1.dat)  <(awk '{print $2}' stats2.dat)  <(awk '{print $2}' stats3.dat) | tail -n +2 >> overall_stats.csv
+	
+	echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" >> overall_stats.csv
+	paste stats8.dat  <(awk '{print $2}' stats5.dat)  <(awk '{print $2}' stats6.dat)  <(awk '{print $2}' stats7.dat) | tail -n +2 >> overall_stats.csv
+}
 
 
 
