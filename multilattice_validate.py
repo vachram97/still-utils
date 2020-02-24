@@ -10,8 +10,6 @@ from typing import Dict, List
 import argparse
 import warnings
 
-# TODO: write false multiples list
-
 
 def read_stream(filename: str, print_multiples=None) -> Dict:
     """\
