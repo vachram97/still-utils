@@ -453,14 +453,13 @@ else
 	echo "Warning: 'multilattice_validate.py' is not in current or path, won\'t be used"
 fi
 
+
 # PART WHERE I EXECUTE EXTERNAL SCRIPTS
-#	- detector-shift -- compare shifted and non-shifted values
-#	- multicrystal_validate -- access quality of multi-crystal indexing
-#		- number of images with multiple crystals (and full list)
+#	- detector-shift -- compare shifted and non-shifted values # TODO
 # PART WHERE I DRAW HISTOGRAMS
-#	- indexed resolution histogram
-#	- non-indexed resolution histogram
-#	- full resolution histogram
+#	- indexed resolution histogram # TODO
+#	- non-indexed resolution histogram # TODO
+#	- full resolution histogram # TODO
 
 
 # PART WHERE I MERGE THE DATA
