@@ -51,6 +51,10 @@ Workflow parameters:
 		merging on stream. If that is true, input file name --input should be
 		an HKL filename, rather than a stream. All three <>.[hkl, hkl1, hkl2]
 		should be present.
+	--multi_rmsd
+		Used by multilattice_validate.py as cutoff (in degrees).
+		If two lattices on the same image might be rotated on angle less than that,
+		they will be considered as a false multiple.
 	--nproc, -j
 		Number of processors to be used for merging. By default, output of 'nproc'.
 		If --nproc=0 or less, will use all availalbe and print warning.
@@ -85,6 +89,8 @@ Merging parameters:
 	-y, --symmetry
 		Symmetry for merging. 
 		Used by process_hkl/partialator and compare_hkl and check_hkl.
+	--model
+		Model for partialator. Should be either 'unity' or 'xsphere'.
 	--string_params
 		Parameters for either process_hkl or partialator provided as a string.
 		Warning: it is your duty to make sure you provide valid parameters for
@@ -109,8 +115,8 @@ HIGHRES_INCLUDE=""
 MIN_CC=""
 ITERATIONS=""
 STRING_PARAMS=""
-MODEL="unity"  # TODO: add parsing of MODEL for partialator
-MULTI_RMSD=5.0 # TODO: add parsing of MULTI_RMSD
+MODEL=""
+MULTI_RMSD=""
 
 ############################
 # READING INPUT PARAMETERS #
@@ -214,6 +220,11 @@ while [[ $# -gt 0 ]]; do
 	shift
 	;;
 	#----------------------------------------
+		--multi_rmsd)
+			MULTI_RMSD="$2"
+	shift
+	;;
+	#----------------------------------------
 		--min_cc)
 			MIN_CC="$2"
 	shift
@@ -221,6 +232,11 @@ while [[ $# -gt 0 ]]; do
 	#----------------------------------------
 		--string_params)
 			STRING_PARAMS="$2"
+	shift
+	;;
+	#----------------------------------------
+		--model)
+			MODEL="$2"
 	shift
 	;;
 	#----------------------------------------
@@ -338,6 +354,15 @@ fi
 if ! [[ ${HIGHRES_INCLUDE} =~ $is_float_positive ]]; then
 	echo "Error: HIGHRES_INCLUDE should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
 
+# check validity of MULTI_RMSD
+is_float_positive='^[0-9]*\.[0-9]*$'
+if [[ ${MULTI_RMSD} == "" ]]; then
+	echo "Warning: will use default MULTI_RMSD=5.0 degrees"; MULTI_RMSD=5.0; fi
+if ! [[ ${MULTI_RMSD} =~ $is_float_positive ]]; then
+	echo "Error: MULTI_RMSD should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+if (( $(echo "${MULTI_RMSD} > 30.0" |bc -l) )); then
+	echo "Warning: are you sure you want your MULTI_RMSDs be that large? It may give unreasonably high false multiples number"; fi
+
 # check validity of MIN_CC
 is_float='^\-{0,1}[0-9]*\.[0-9]*$'
 if [[ ${MIN_CC} == "" ]]; then
@@ -347,6 +372,19 @@ if ! [[ ${MIN_CC} =~ $is_float ]]; then
 	echo "Error: MIN_CC should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
 if (( $(echo "${MIN_CC} > 1.0" |bc -l) )) || (( $(echo "${MIN_CC} < -1.0" |bc -l) )); then
 	echo "Error: |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"; exit 1; fi
+
+# check validity of MODEL
+if [[ ${MERGING} == "partialator" ]]; then
+	if [[ ${MODEL} == "" ]]; then
+		echo "Warning: will use 'unity' model by default"; MODEL="unity"; fi
+
+	if ! [[ ${MODEL} == "unity" ]] && [[ ${MODEL} == "xsphere" ]]; then
+		echo "Error: MODEL should be either 'unity' or 'xsphere'"; exit 1; fi
+fi
+
+# check validity of SYMMETRY
+if ! [[ ${MERGING} == "none" ]]; then
+	echo "Error: you must provide SYMMETRY, if you do merging"; exit 1; fi
 
 
 #----------------------------------------------------------------------------------------------
@@ -469,23 +507,23 @@ fi
 
 # outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
 # TODO: correct function rate in order to save logs & give results properly
-function rate() {
-	rm stats[0-9].dat &>/dev/null
-        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats1.dat
-        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats2.dat
-        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats3.dat
-        check_hkl tmp.hkl -y "$symmetry" -p "$cell"                                       --lowres="$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat > stats4.dat
-
-        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats5.dat
-        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats6.dat
-        compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat >> stats7.dat
-        check_hkl tmp.hkl --nshells 1 -y "$symmetry" -p "$cell"                          --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >> stats8.dat
-	paste stats4.dat <(awk '{print $3'} stats1.dat) <(awk '{print $3'} stats2.dat) <(awk '{print $3'} stats3.dat) | head -1        > overall_stats.csv
-	paste stats4.dat  <(awk '{print $2}' stats1.dat)  <(awk '{print $2}' stats2.dat)  <(awk '{print $2}' stats3.dat) | tail -n +2 >> overall_stats.csv
-	
-	echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" >> overall_stats.csv
-	paste stats8.dat  <(awk '{print $2}' stats5.dat)  <(awk '{print $2}' stats6.dat)  <(awk '{print $2}' stats7.dat) | tail -n +2 >> overall_stats.csv
-}
+# function rate() {
+#     rm stats[0-9].dat &>/dev/null
+#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats1.dat
+#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats2.dat
+#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats3.dat
+#         check_hkl tmp.hkl -y "$symmetry" -p "$cell"                                       --lowres="$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat > stats4.dat
+#
+#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats5.dat
+#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats6.dat
+#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat >> stats7.dat
+#         check_hkl tmp.hkl --nshells 1 -y "$symmetry" -p "$cell"                          --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >> stats8.dat
+#     paste stats4.dat <(awk '{print $3'} stats1.dat) <(awk '{print $3'} stats2.dat) <(awk '{print $3'} stats3.dat) | head -1        > overall_stats.csv
+#     paste stats4.dat  <(awk '{print $2}' stats1.dat)  <(awk '{print $2}' stats2.dat)  <(awk '{print $2}' stats3.dat) | tail -n +2 >> overall_stats.csv
+#
+#     echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" >> overall_stats.csv
+#     paste stats8.dat  <(awk '{print $2}' stats5.dat)  <(awk '{print $2}' stats6.dat)  <(awk '{print $2}' stats7.dat) | tail -n +2 >> overall_stats.csv
+# }
 
 
 
