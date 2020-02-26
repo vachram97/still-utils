@@ -15,8 +15,7 @@ Usage:
 ------
 	./analyzer -i output.stream \\
 		--merging process_hkl \\
-		--lowres 30.0 --highres 3.0 -y 222 --pushres 2.5 \\
-		-o lyzozyme 
+		--lowres 30.0 --highres 3.0 -y 222 --pushres 2.5
 
 		Provides you with output.stream indexing stats 
 		and performs merging with process_hkl
@@ -35,9 +34,6 @@ Workflow parameters:
 --------------------
 	-i, --input
 		Input file name (name or mask)
-	-o, --output
-		Output HKL file name template.
-		Default: 'oanalyzer_YYYY-MM-DD-HH-SS'
 	--cell, -p
 		Unit cell file (used for compare_hkl only)
 	--merging
@@ -98,7 +94,6 @@ Merging parameters:
 "
 
 INPUT=""
-OUTPUT="oanalyzer_$(date +%F-%H-%M-%S)"
 CELL=""
 MERGING="none"
 RATE=""
@@ -151,11 +146,6 @@ while [[ $# -gt 0 ]]; do
 				INPUT="tmp.stream";
 			fi
 	;; # there is no shift here for correct multi-stream input
-	#----------------------------------------
-		-o|--output)
-			OUTPUT="$2"
-	shift
-	;;
 	#----------------------------------------
 		-p|--cell)
 			CELL="$2"
@@ -254,13 +244,6 @@ done
 # CHECKING THAT ALL INPUT PARAMETERS ARE VALID #
 ################################################
 
-# check validity of OUTPUT
-if ! (touch "$OUTPUT" &> /dev/null); then
-	echo "Error: could not access output ${OUTPUT}, please check access right and/or folder structure"; exit 1
-else
-	rm "$OUTPUT"
-fi
-
 # check validity of LOGS
 if [[ "${LOGS}" == "" ]]; then
 	echo "You have not provided --logs, will use default value"
@@ -277,11 +260,11 @@ fi
 if ! [[ -f "$CELL" ]]; then
 	echo "Warning: could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
 	echo "Warning: will proceed using cell from the stream"
-	python3 extract_cell.py ${INPUT} > "${LOGS}/${OUTPUT}".cell
-	echo "Warning: using cell ${LOGS}/${OUTPUT}.cell -- check if it's correct"
-	CELL="${LOGS}/${OUTPUT}.cell"
+	python3 extract_cell.py ${INPUT} > "${LOGS}/input.cell"
+	echo "Warning: using cell ${LOGS}/input.cell -- check if it's correct"
+	CELL="${LOGS}/input.cell"
 else
-	rm "$OUTPUT" &> /dev/null
+	:
 fi
 
 # check validity of RATE
@@ -435,11 +418,11 @@ echo "======================="
 #	- number of indexed images (and full list)
 for method in "${METHODS[@]}"; do
 	if [[ $(grep -c "Event" ${INPUT}) -gt 3 ]]; then
-		grep "indexed_by = ${method}" ${INPUT} -B 4 | grep "Image filename\|Event" | grep "Image\|Event" | sed 'N;s/\n/ /' | awk '{print $3, $5}' > "$LOGS"/"$OUTPUT".${method}.lst
+		grep "indexed_by = ${method}" ${INPUT} -B 4 | grep "Image filename\|Event" | grep "Image\|Event" | sed 'N;s/\n/ /' | awk '{print $3, $5}' > "${LOGS}/indexed_by_${method}.lst"
 	else
-		grep "indexed_by = ${method}" ${INPUT} -B 3 | grep "Image filename" | grep "Image" | awk '{print $3, $5}' > "$LOGS"/"$OUTPUT".${method}.lst
+		grep "indexed_by = ${method}" ${INPUT} -B 3 | grep "Image filename" | grep "Image" | awk '{print $3, $5}' >"${LOGS}/indexed_by_${method}.lst"
 	fi
-	echo "Indexed by $method here:         ${LOGS}/${OUTPUT}.${method}.lst"
+	echo "Indexed by $method here:         ${LOGS}/indexed_by_${method}.lst"
 done
 
 
@@ -447,9 +430,9 @@ done
 # -multilattice_validate.py (this repo)
 
 if [[ -f ./multilattice_validate.py ]]; then
-	./multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/${OUTPUT}.multiples.lst"
+	./multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
 elif command -v multilattice_validate.py 2>/dev/null;  then
-	multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/${OUTPUT}.multiples.lst"
+	multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
 else
 	echo "Warning: 'multilattice_validate.py' is not in current or path, won\'t be used"
 fi
@@ -468,7 +451,7 @@ if [[ "$MERGING" == "partialator" ]]; then
 	# runs partialator to estimate rmeas and other foms
 	MERGING_COMMAND="partialator \
 -i $INPUT \
--o ${LOGS}/${OUTPUT}.hkl \
+-o ${LOGS}/merged.hkl \
 --iterations=$ITERATIONS \
 -j $NPROC \
 --model=$MODEL  \
@@ -477,7 +460,7 @@ if [[ "$MERGING" == "partialator" ]]; then
 --min-res=${HIGHRES_INCLUDE} \
 ${STRING_PARAMS}"
 	echo "Merging with following command: ${MERGING_COMMAND}"
-	eval "${MERGING_COMMAND}" | tee "${LOGS}/${OUTPUT}_partialator.log"
+	eval "${MERGING_COMMAND}" | tee "${LOGS}/partialator.log"
 
 # TODO: if highres_include is large, do not do second pass
 elif [[ "$MERGING" == "process_hkl" ]]; then
@@ -488,18 +471,18 @@ elif [[ "$MERGING" == "process_hkl" ]]; then
 --min-res=${HIGHRES_INCLUDE} \
 --min-cc=${MIN_CC} \
 ${STRING_PARAMS}"
-	echo "Merging with following command: ${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl"
-	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl"              | tee "${LOGS}/${OUTPUT}_process_hkl.log"
-	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl1 --odd-only"  | tee "${LOGS}/${OUTPUT}_process_hkl1.log"
-	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl2 --even-only" | tee "${LOGS}/${OUTPUT}_process_hkl2.log"
+	echo "Merging with following command: ${MERGING_COMMAND} -o ${LOGS}/merged.hkl"
+	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl"              | tee "${LOGS}/process_hkl.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl1 --odd-only"  | tee "${LOGS}/process_hkl1.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl2 --even-only" | tee "${LOGS}/process_hkl2.log"
 else
 	:
 fi	
 
 # check whether data have been properly merged
-if ! [[ -f ${LOGS}/${OUTPUT}.hkl ]]; then
+if ! [[ -f ${LOGS}/merged.hkl ]]; then
 	echo "Error: data were not properly merged"
-	echo "See ${LOGS}/${OUTPUT}_${MERGING}.log for full log"
+	echo "See ${LOGS}/${MERGING}.log for full log"
 	exit 1
 fi
 
@@ -516,53 +499,53 @@ function rate() {
     HKL_TEMPLATE="$1"
 	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
 	FOMS=("rsplit" "cc" "ccstar")
-	touch "${LOGS}/${OUTPUT}_execution.log" &> /dev/null
+	touch "${LOGS}/execution.log" &> /dev/null
 	
 	# do per-shell stats.dat
 	for fom in "${FOMS[@]}"; do
-		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 10 --fom ${fom} &> ${LOGS}/${OUTPUT}_compare_hkl_${fom}.log"
-		echo "${STRING}" >> "${LOGS}/${OUTPUT}_execution.log"
+		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 10 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}.log"
+		echo "${STRING}" >> "${LOGS}/execution.log"
 		eval "${STRING}"
-		mv shells.dat "${LOGS}/${OUTPUT}_shells_${fom}.dat"
+		mv shells.dat "${LOGS}/shells_${fom}.dat"
 	done
-	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 10 &> ${LOGS}/${OUTPUT}_check_hkl.log"
-	echo "${STRING}" >> "${LOGS}/${OUTPUT}_execution.log"
+	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 10 &> ${LOGS}/check_hkl.log"
+	echo "${STRING}" >> "${LOGS}/execution.log"
 	eval "${STRING}"
-	mv shells.dat "${LOGS}/${OUTPUT}_check_hkl.dat"
+	mv shells.dat "${LOGS}/check_hkl.dat"
 
 	# do whole-resolution
 	for fom in "${FOMS[@]}"; do
-		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 1 --fom ${fom} &> ${LOGS}/${OUTPUT}_compare_hkl_${fom}_full.log"
-		echo "${STRING}" >> "${LOGS}/${OUTPUT}_execution.log"
+		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 1 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}_full.log"
+		echo "${STRING}" >> "${LOGS}/execution.log"
 		eval "${STRING}"
-		mv shells.dat "${LOGS}/${OUTPUT}_shells_${fom}_full.dat" &> /dev/null
+		mv shells.dat "${LOGS}/shells_${fom}_full.dat" &> /dev/null
 	done
-	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 1 &> ${LOGS}/${OUTPUT}_check_hkl_full.log"
-	echo "${STRING}" >> "${LOGS}/${OUTPUT}_execution.log"
+	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 1 &> ${LOGS}/check_hkl_full.log"
+	echo "${STRING}" >> "${LOGS}/execution.log"
 	eval "${STRING}"
-	mv shells.dat "${LOGS}/${OUTPUT}_check_hkl_full.dat" &> /dev/null
+	mv shells.dat "${LOGS}/check_hkl_full.dat" &> /dev/null
 
 	# merge all together
 
-	paste "${LOGS}/${OUTPUT}_check_hkl.dat" \
-		<(awk '{print $3}' "${LOGS}/${OUTPUT}_shells_rsplit.dat" ) \
-		<(awk '{print $3}' "${LOGS}/${OUTPUT}_shells_cc.dat"     ) \
-		<(awk '{print $3}' "${LOGS}/${OUTPUT}_shells_ccstar.dat" ) | head -n 1 >> "${LOGS}/${OUTPUT}_overall_stats.csv"
-	paste "${LOGS}/${OUTPUT}_check_hkl.dat" \
-		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_rsplit.dat" ) \
-		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_cc.dat"     ) \
-		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_ccstar.dat" ) | tail -n+2 >> "${LOGS}/${OUTPUT}_overall_stats.csv"
+	paste "${LOGS}/check_hkl.dat" \
+		<(awk '{print $3}' "${LOGS}/shells_rsplit.dat" ) \
+		<(awk '{print $3}' "${LOGS}/shells_cc.dat"     ) \
+		<(awk '{print $3}' "${LOGS}/shells_ccstar.dat" ) | head -n 1 >> "${LOGS}/overall_stats.csv"
+	paste "${LOGS}/check_hkl.dat" \
+		<(awk '{print $2}' "${LOGS}/shells_rsplit.dat" ) \
+		<(awk '{print $2}' "${LOGS}/shells_cc.dat"     ) \
+		<(awk '{print $2}' "${LOGS}/shells_ccstar.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
     echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" \
-		>> "${LOGS}/${OUTPUT}_overall_stats.csv"
-	paste "${LOGS}/${OUTPUT}_check_hkl_full.dat" \
-		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_rsplit_full.dat" ) \
-		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_cc_full.dat"     ) \
-		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_ccstar_full.dat" ) | tail -n+2 >> "${LOGS}/${OUTPUT}_overall_stats.csv"
-	cat "${LOGS}/${OUTPUT}_overall_stats.csv"
+		>> "${LOGS}/overall_stats.csv"
+	paste "${LOGS}/check_hkl_full.dat" \
+		<(awk '{print $2}' "${LOGS}/shells_rsplit_full.dat" ) \
+		<(awk '{print $2}' "${LOGS}/shells_cc_full.dat"     ) \
+		<(awk '{print $2}' "${LOGS}/shells_ccstar_full.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
+	cat "${LOGS}/overall_stats.csv"
 
 }
 
-rate "${LOGS}/${OUTPUT}.hkl"
+rate "${LOGS}/merged.hkl"
 
 
 
@@ -573,8 +556,5 @@ if [ "$CLEANUP" -eq 0 ]; then
 	echo "......."
 	echo "Warning: will not do cleanup"
 else # no elif here -- validity check above guaranteers that else is enough
-	echo "......."
-	echo "Removing according to tmp.${OUTPUT} mask"
-	rm "tmp.${OUTPUT}"* &> /dev/null
 	if [[ -f tmp.stream ]]; then rm tmp.stream; fi
 fi
