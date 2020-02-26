@@ -13,3 +13,4 @@ logs
 
 # Python stuff
 __pycache__
+.vscode

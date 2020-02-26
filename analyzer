@@ -279,6 +279,7 @@ if ! [[ -f "$CELL" ]]; then
 	echo "Warning: will proceed using cell from the stream"
 	python3 extract_cell.py ${INPUT} > "${LOGS}/${OUTPUT}".cell
 	echo "Warning: using cell ${LOGS}/${OUTPUT}.cell -- check if it's correct"
+	CELL="${LOGS}/${OUTPUT}.cell"
 else
 	rm "$OUTPUT" &> /dev/null
 fi
@@ -383,7 +384,7 @@ if [[ ${MERGING} == "partialator" ]]; then
 fi
 
 # check validity of SYMMETRY
-if ! [[ ${MERGING} == "none" ]]; then
+if ! [[ ${MERGING} == "none" ]] && [[ ${SYMMETRY} == "" ]]; then
 	echo "Error: you must provide SYMMETRY, if you do merging"; exit 1; fi
 
 
@@ -476,8 +477,9 @@ if [[ "$MERGING" == "partialator" ]]; then
 --min-res=${HIGHRES_INCLUDE} \
 ${STRING_PARAMS}"
 	echo "Merging with following command: ${MERGING_COMMAND}"
-	eval "${MERGING_COMMAND}" 2>&1 | tee "${LOGS}/${OUTPUT}_partialator.log"
+	eval "${MERGING_COMMAND}" | tee "${LOGS}/${OUTPUT}_partialator.log"
 
+# TODO: if highres_include is large, do not do second pass
 elif [[ "$MERGING" == "process_hkl" ]]; then
 	MERGING_COMMAND="process_hkl \
 -i $INPUT \
@@ -487,16 +489,19 @@ elif [[ "$MERGING" == "process_hkl" ]]; then
 --min-cc=${MIN_CC} \
 ${STRING_PARAMS}"
 	echo "Merging with following command: ${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl"
-	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl"              2>&1 | tee "${LOGS}/${OUTPUT}_process_hkl.log"
-	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl1 --odd-only"  2>&1 | tee "${LOGS}/${OUTPUT}_process_hkl1.log"
-	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl2 --even-only" 2>&1 | tee "${LOGS}/${OUTPUT}_process_hkl2.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl"              | tee "${LOGS}/${OUTPUT}_process_hkl.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl1 --odd-only"  | tee "${LOGS}/${OUTPUT}_process_hkl1.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/${OUTPUT}.hkl2 --even-only" | tee "${LOGS}/${OUTPUT}_process_hkl2.log"
 else
 	:
 fi	
 
-# TODO: check whether data have been properly merged
-
-
+# check whether data have been properly merged
+if ! [[ -f ${LOGS}/${OUTPUT}.hkl ]]; then
+	echo "Error: data were not properly merged"
+	echo "See ${LOGS}/${OUTPUT}_${MERGING}.log for full log"
+	exit 1
+fi
 
 
 # PART WHERE I ACCESS THE MERGED DATA QUALITY
@@ -506,23 +511,58 @@ fi
 
 # outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
 # TODO: correct function rate in order to save logs & give results properly
-# function rate() {
-#     rm stats[0-9].dat &>/dev/null
-#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats1.dat
-#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats2.dat
-#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=10 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats3.dat
-#         check_hkl tmp.hkl -y "$symmetry" -p "$cell"                                       --lowres="$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat > stats4.dat
-#
-#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom rsplit --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >  stats5.dat
-#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom cc     --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat > stats6.dat
-#         compare_hkl tmp.hkl1 tmp.hkl2 -y "$symmetry" -p "$cell" --fom ccstar --nshells=1 --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; grep -a -v "shitcentre" shells.dat >> stats7.dat
-#         check_hkl tmp.hkl --nshells 1 -y "$symmetry" -p "$cell"                          --lowres "$lowres" --highres "$highres" &> compare_hkl.log ; cat shells.dat >> stats8.dat
-#     paste stats4.dat <(awk '{print $3'} stats1.dat) <(awk '{print $3'} stats2.dat) <(awk '{print $3'} stats3.dat) | head -1        > overall_stats.csv
-#     paste stats4.dat  <(awk '{print $2}' stats1.dat)  <(awk '{print $2}' stats2.dat)  <(awk '{print $2}' stats3.dat) | tail -n +2 >> overall_stats.csv
-#
-#     echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" >> overall_stats.csv
-#     paste stats8.dat  <(awk '{print $2}' stats5.dat)  <(awk '{print $2}' stats6.dat)  <(awk '{print $2}' stats7.dat) | tail -n +2 >> overall_stats.csv
-# }
+
+function rate() {
+    HKL_TEMPLATE="$1"
+	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
+	FOMS=("rsplit" "cc" "ccstar")
+	touch "${LOGS}/${OUTPUT}_execution.log" &> /dev/null
+	
+	# do per-shell stats.dat
+	for fom in "${FOMS[@]}"; do
+		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 10 --fom ${fom} &> ${LOGS}/${OUTPUT}_compare_hkl_${fom}.log"
+		echo "${STRING}" >> "${LOGS}/${OUTPUT}_execution.log"
+		eval "${STRING}"
+		mv shells.dat "${LOGS}/${OUTPUT}_shells_${fom}.dat"
+	done
+	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 10 &> ${LOGS}/${OUTPUT}_check_hkl.log"
+	echo "${STRING}" >> "${LOGS}/${OUTPUT}_execution.log"
+	eval "${STRING}"
+	mv shells.dat "${LOGS}/${OUTPUT}_check_hkl.dat"
+
+	# do whole-resolution
+	for fom in "${FOMS[@]}"; do
+		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 1 --fom ${fom} &> ${LOGS}/${OUTPUT}_compare_hkl_${fom}_full.log"
+		echo "${STRING}" >> "${LOGS}/${OUTPUT}_execution.log"
+		eval "${STRING}"
+		mv shells.dat "${LOGS}/${OUTPUT}_shells_${fom}_full.dat" &> /dev/null
+	done
+	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 1 &> ${LOGS}/${OUTPUT}_check_hkl_full.log"
+	echo "${STRING}" >> "${LOGS}/${OUTPUT}_execution.log"
+	eval "${STRING}"
+	mv shells.dat "${LOGS}/${OUTPUT}_check_hkl_full.dat" &> /dev/null
+
+	# merge all together
+
+	paste "${LOGS}/${OUTPUT}_check_hkl.dat" \
+		<(awk '{print $3}' "${LOGS}/${OUTPUT}_shells_rsplit.dat" ) \
+		<(awk '{print $3}' "${LOGS}/${OUTPUT}_shells_cc.dat"     ) \
+		<(awk '{print $3}' "${LOGS}/${OUTPUT}_shells_ccstar.dat" ) | head -n 1 >> "${LOGS}/${OUTPUT}_overall_stats.csv"
+	paste "${LOGS}/${OUTPUT}_check_hkl.dat" \
+		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_rsplit.dat" ) \
+		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_cc.dat"     ) \
+		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_ccstar.dat" ) | tail -n+2 >> "${LOGS}/${OUTPUT}_overall_stats.csv"
+    echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" \
+		>> "${LOGS}/${OUTPUT}_overall_stats.csv"
+	paste "${LOGS}/${OUTPUT}_check_hkl_full.dat" \
+		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_rsplit_full.dat" ) \
+		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_cc_full.dat"     ) \
+		<(awk '{print $2}' "${LOGS}/${OUTPUT}_shells_ccstar_full.dat" ) | tail -n+2 >> "${LOGS}/${OUTPUT}_overall_stats.csv"
+	cat "${LOGS}/${OUTPUT}_overall_stats.csv"
+
+}
+
+rate "${LOGS}/${OUTPUT}.hkl"
 
 
 
