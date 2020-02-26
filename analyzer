@@ -375,6 +375,8 @@ if ! [[ ${MERGING} == "none" ]] && [[ ${SYMMETRY} == "" ]]; then
 # PART WHERE I DO STREAM ANALYTICS
 #	- per-indexer dictribution
 
+# TODO: add rate logic
+
 NIMAGES=$(grep -a "Begin chunk" "$INPUT" -c)
 NCRYST=$(grep -a "Begin crystal" "$INPUT" -c)
 METHODS=($(grep -E -a "indexed_by" "$INPUT" | grep -a -v 'none' | sort | uniq | awk 'NF>1{print $NF}' | tr '\n' ' '))
@@ -493,8 +495,6 @@ fi
 #################
 
 # outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
-# TODO: correct function rate in order to save logs & give results properly
-
 function rate() {
     HKL_TEMPLATE="$1"
 	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
