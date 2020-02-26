@@ -161,8 +161,7 @@ while [[ $# -gt 0 ]]; do
 	;;
 	#----------------------------------------
 		--rate)
-			RATE="$2"
-	shift
+			RATE="TRUE"
 	;;
 	#----------------------------------------
 		--nproc|-j)
@@ -267,19 +266,6 @@ else
 	:
 fi
 
-# check validity of RATE
-if [[ "$RATE" != "" ]] && [[ "$RATE" != "no" ]]; then
-	if ! [[ -f "${RATE}.hkl" ]]; then
-		echo "Erorr: could not existance, access output ${RATE}.hkl, please check existance, access right and/or folder structure"; exit 1;
-	elif ! [[ -f "${RATE}.hkl1" ]]; then
-		echo "Error: could not existance, access output ${RATE}.hkl1, please check existance, access right and/or folder structure"; exit 1
-	elif ! [[ -f "${RATE}.hkl2" ]]; then
-		echo "Error: could not existance, access output ${RATE}.hkl2, please check existance, access right and/or folder structure"; exit 1
-	else
-		:
-	fi
-fi
-
 # check validity of NPROC
 is_integer='^[0-9]+$'
 if ! [[ ${NPROC} =~ $is_integer ]] ; then
@@ -371,11 +357,74 @@ if ! [[ ${MERGING} == "none" ]] && [[ ${SYMMETRY} == "" ]]; then
 	echo "Error: you must provide SYMMETRY, if you do merging"; exit 1; fi
 
 
+# check validity of RATE
+if [[ "$RATE" != "" ]]; then
+	if [[ ${CELL} == "" ]]; then
+		echo "Error: you must provide valid cell file"; exit 1
+	elif ! [[ -f ${CELL} ]]; then
+		echo "Error: the cell file <${CELL}> you provided does not exist"; exit 1
+	fi
+fi
+
 #----------------------------------------------------------------------------------------------
 # PART WHERE I DO STREAM ANALYTICS
 #	- per-indexer dictribution
 
-# TODO: add rate logic
+function rate() {
+    HKL_TEMPLATE="$1"
+	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
+	FOMS=("rsplit" "cc" "ccstar")
+	touch "${LOGS}/execution.log" &> /dev/null
+	
+	# do per-shell stats.dat
+	for fom in "${FOMS[@]}"; do
+		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 10 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}.log"
+		echo "${STRING}" >> "${LOGS}/execution.log"
+		eval "${STRING}"
+		mv shells.dat "${LOGS}/shells_${fom}.dat"
+	done
+	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 10 &> ${LOGS}/check_hkl.log"
+	echo "${STRING}" >> "${LOGS}/execution.log"
+	eval "${STRING}"
+	mv shells.dat "${LOGS}/check_hkl.dat"
+
+	# do whole-resolution
+	for fom in "${FOMS[@]}"; do
+		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 1 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}_full.log"
+		echo "${STRING}" >> "${LOGS}/execution.log"
+		eval "${STRING}"
+		mv shells.dat "${LOGS}/shells_${fom}_full.dat" &> /dev/null
+	done
+	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 1 &> ${LOGS}/check_hkl_full.log"
+	echo "${STRING}" >> "${LOGS}/execution.log"
+	eval "${STRING}"
+	mv shells.dat "${LOGS}/check_hkl_full.dat" &> /dev/null
+
+	# merge all together
+
+	paste "${LOGS}/check_hkl.dat" \
+		<(awk '{print $3}' "${LOGS}/shells_rsplit.dat" ) \
+		<(awk '{print $3}' "${LOGS}/shells_cc.dat"     ) \
+		<(awk '{print $3}' "${LOGS}/shells_ccstar.dat" ) | head -n 1 >> "${LOGS}/overall_stats.csv"
+	paste "${LOGS}/check_hkl.dat" \
+		<(awk '{print $2}' "${LOGS}/shells_rsplit.dat" ) \
+		<(awk '{print $2}' "${LOGS}/shells_cc.dat"     ) \
+		<(awk '{print $2}' "${LOGS}/shells_ccstar.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
+    echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" \
+		>> "${LOGS}/overall_stats.csv"
+	paste "${LOGS}/check_hkl_full.dat" \
+		<(awk '{print $2}' "${LOGS}/shells_rsplit_full.dat" ) \
+		<(awk '{print $2}' "${LOGS}/shells_cc_full.dat"     ) \
+		<(awk '{print $2}' "${LOGS}/shells_ccstar_full.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
+	cat "${LOGS}/overall_stats.csv"
+
+}
+
+if [[ "${RATE}" == "TRUE" ]]; then
+	echo "Will only perform rating"
+	rate "$INPUT"
+	exit 0;
+fi
 
 NIMAGES=$(grep -a "Begin chunk" "$INPUT" -c)
 NCRYST=$(grep -a "Begin crystal" "$INPUT" -c)
@@ -495,55 +544,6 @@ fi
 #################
 
 # outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
-function rate() {
-    HKL_TEMPLATE="$1"
-	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
-	FOMS=("rsplit" "cc" "ccstar")
-	touch "${LOGS}/execution.log" &> /dev/null
-	
-	# do per-shell stats.dat
-	for fom in "${FOMS[@]}"; do
-		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 10 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}.log"
-		echo "${STRING}" >> "${LOGS}/execution.log"
-		eval "${STRING}"
-		mv shells.dat "${LOGS}/shells_${fom}.dat"
-	done
-	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 10 &> ${LOGS}/check_hkl.log"
-	echo "${STRING}" >> "${LOGS}/execution.log"
-	eval "${STRING}"
-	mv shells.dat "${LOGS}/check_hkl.dat"
-
-	# do whole-resolution
-	for fom in "${FOMS[@]}"; do
-		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 1 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}_full.log"
-		echo "${STRING}" >> "${LOGS}/execution.log"
-		eval "${STRING}"
-		mv shells.dat "${LOGS}/shells_${fom}_full.dat" &> /dev/null
-	done
-	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 1 &> ${LOGS}/check_hkl_full.log"
-	echo "${STRING}" >> "${LOGS}/execution.log"
-	eval "${STRING}"
-	mv shells.dat "${LOGS}/check_hkl_full.dat" &> /dev/null
-
-	# merge all together
-
-	paste "${LOGS}/check_hkl.dat" \
-		<(awk '{print $3}' "${LOGS}/shells_rsplit.dat" ) \
-		<(awk '{print $3}' "${LOGS}/shells_cc.dat"     ) \
-		<(awk '{print $3}' "${LOGS}/shells_ccstar.dat" ) | head -n 1 >> "${LOGS}/overall_stats.csv"
-	paste "${LOGS}/check_hkl.dat" \
-		<(awk '{print $2}' "${LOGS}/shells_rsplit.dat" ) \
-		<(awk '{print $2}' "${LOGS}/shells_cc.dat"     ) \
-		<(awk '{print $2}' "${LOGS}/shells_ccstar.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
-    echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" \
-		>> "${LOGS}/overall_stats.csv"
-	paste "${LOGS}/check_hkl_full.dat" \
-		<(awk '{print $2}' "${LOGS}/shells_rsplit_full.dat" ) \
-		<(awk '{print $2}' "${LOGS}/shells_cc_full.dat"     ) \
-		<(awk '{print $2}' "${LOGS}/shells_ccstar_full.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
-	cat "${LOGS}/overall_stats.csv"
-
-}
 
 rate "${LOGS}/merged.hkl"
 
