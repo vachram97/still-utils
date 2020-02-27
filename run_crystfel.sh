@@ -1,7 +1,12 @@
 #!/bin/bash
 
+# TODO: merge with turbo-index-slurm
+# TODO: create folders on first run
+# TODO: add help
+
 time=$(date "+%Y_%m_%d_%H_%M")
 
+# GENERAL PARAMETERS
 PROJECT_NAME="GPCR"
 NPROC="32"
 

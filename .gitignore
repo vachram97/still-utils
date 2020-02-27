@@ -6,10 +6,13 @@
 *.geom
 *.cell
 *.pdb
+*.stream.*.json
 
 # Standard processing folders
 streams
 logs
+images
 
 # Python stuff
 __pycache__
+.vscode
