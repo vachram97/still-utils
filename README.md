@@ -1,6 +1,6 @@
-## `analyzer`
+## `analyzer` 
 
-```
+``` 
 It is written in bash and uses only standard CrystFEL utils, such as 
 process_hkl, partialator, compare_hkl, etc.
 
@@ -15,13 +15,11 @@ Usage:
 		and performs merging with process_hkl
 		Writes output to lysozyme.{hkl,hkl1,hkl2}.
 
-
 	./analyzer -i lysozyme --rate \
 		--highres 2.5 --lowres 20.0 --cell lyz_v2.cell
 
 		Runs compare_hkl on previously generated hkl files
 		with different unit cell file and resolution cutoffs
-
 
 --------------------
 Workflow parameters:
@@ -87,9 +85,9 @@ Merging parameters:
 		the tool of your choice.
 ```
 
-## `multilattice_validate.py`
+## `multilattice_validate.py` 
 
-```
+``` 
 usage: multilattice_validate.py [-h] [--out OUT] [--rmsd RMSD] stream
 
 Estimate number of falsely-multiple lattices
@@ -104,8 +102,27 @@ optional arguments:
                separate ones
 ```
 
-## `extract_cell.py`
+## `extract_cell.py` 
+
+``` 
+Usage: ./extract_cell.py my.stream
+```
+
+## `peaks2json.py` 
 
 ```
-Usage: ./extract_cell.py my.stream
+usage: peaks2json.py [-h] [--chunks CHUNKS] [--crystals CRYSTALS]
+                     [--debug DEBUG]
+                     stream
+
+Indexed and located peak extraction from CrystFEL stream to json object
+
+positional arguments:
+  stream               input stream
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --chunks CHUNKS      Whether save chunk peaks or not
+  --crystals CRYSTALS  Whether save crystal peaks or not
+  --debug DEBUG        Don't supress lines with errors
 ```
