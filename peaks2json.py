@@ -32,7 +32,7 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
         Dict -- dictionary containing all peak positions from peakfinder. Format is {('image_filename','event'):(panel,fs,ss)}
     """
 
-    stderr = sys.stderr if debug else open(os.devnull,'w')
+    stderr = sys.stderr if debug else open(os.devnull, 'w')
     answ_crystals, answ_chunks = {}, {}
 
     def contains_filename(s):
@@ -66,7 +66,8 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
         current_serial_number = None
         corrupted_chunk = False
 
-        total_number_of_lines = subprocess.check_output(f'wc -l {filename}', shell=True)
+        total_number_of_lines = subprocess.check_output(
+            f'wc -l {filename}', shell=True)
         total_number_of_lines = int(total_number_of_lines.decode().split()[0])
 
         for line in tqdm(stream, desc="Reading stream", bar_format='{l_bar}{bar}{r_bar}', total=total_number_of_lines):
@@ -86,9 +87,9 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                     current_serial_number = line.split()[-1]
                 elif starts_chunk_peaks(line):
                     # image_id = (
-                        # (current_filename, current_event, current_serial_number)
-                        # if current_event is not None
-                        # else (current_filename, current_serial_number)
+                    # (current_filename, current_event, current_serial_number)
+                    # if current_event is not None
+                    # else (current_filename, current_serial_number)
                     # )
                     is_chunk = True
                     continue
@@ -123,7 +124,8 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                         }
 
             except Exception as e:
-                print(f"    Caught {e} on current line: {line}", end='', file=stderr)
+                print(
+                    f"    Caught {e} on current line: {line}", end='', file=stderr)
                 corrupted_chunk = True
                 continue
 
@@ -132,9 +134,11 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                 if is_chunk:
                     fs, ss, _, _, panel = [i for i in line.split()]
                 elif is_crystal:
-                    _, _, _, _, _, _, _, fs, ss, panel = [i for i in line.split()]
+                    _, _, _, _, _, _, _, fs, ss, panel = [
+                        i for i in line.split()]
             except Exception as e:
-                print(f"    Caught {e} on current line: {line}", end='', file=stderr)
+                print(
+                    f"    Caught {e} on current line: {line}", end='', file=stderr)
                 corrupted_chunk = True
                 continue
 
@@ -144,7 +148,7 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
 def main(args: List[str]):
     """
     Main function
-    
+
     Arguments:
         args {List[str]} -- input parameters
     """
@@ -159,7 +163,8 @@ def main(args: List[str]):
     parser.add_argument(
         "--crystals", help="Whether save crystal peaks or not", default=True
     )
-    parser.add_argument('--debug', help="Don't supress lines with errors", default=False)
+    parser.add_argument(
+        '--debug', help="Don't supress lines with errors", default=False)
 
     args = parser.parse_args()
     chunks, crystals = parse_stream(args.stream, debug=args.debug)
