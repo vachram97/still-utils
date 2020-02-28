@@ -544,6 +544,7 @@ fi
 #################
 
 # outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
+# TODO: add proper merging logic
 
 rate "${LOGS}/merged.hkl"
 
