@@ -367,10 +367,12 @@ if [[ "$RATE" != "" ]]; then
 fi
 
 #----------------------------------------------------------------------------------------------
-# PART WHERE I DO STREAM ANALYTICS
-#	- per-indexer dictribution
 
+#################
+# RATE FUNCTION #
+#################
 function rate() {
+	# outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
     HKL_TEMPLATE="$1"
 	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
 	FOMS=("rsplit" "cc" "ccstar")
@@ -420,6 +422,8 @@ function rate() {
 
 }
 
+# PART WHERE I DO STREAM ANALYTICS
+#	- per-indexer dictribution
 if [[ "${RATE}" == "TRUE" ]]; then
 	echo "Will only perform rating"
 	rate "$INPUT"
@@ -530,23 +534,21 @@ else
 	:
 fi	
 
-# check whether data have been properly merged
-if ! [[ -f ${LOGS}/merged.hkl ]]; then
-	echo "Error: data were not properly merged"
-	echo "See ${LOGS}/${MERGING}.log for full log"
-	exit 1
+
+# PART WHERE I ACCESS THE MERGED DATA QUALITY
+if ! [[ "$MERGING" == "none" ]]; then
+	# check whether data have been properly merged
+	if ! [[ -f ${LOGS}/merged.hkl ]]; then
+		echo "Error: data were not properly merged"
+		echo "See ${LOGS}/${MERGING}.log for full log"
+		exit 1
+	fi
+	rate "${LOGS}/merged.hkl"
 fi
 
 
-# PART WHERE I ACCESS THE MERGED DATA QUALITY
-#################
-# RATE FUNCTION #
-#################
 
-# outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
-# TODO: add proper merging logic
 
-rate "${LOGS}/merged.hkl"
 
 
 
