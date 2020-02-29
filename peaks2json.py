@@ -6,6 +6,8 @@ if [ -x "$(command -v pypy3)" ]; then
     exec pypy3 $0 "$@" 
 else
     echo "Running with python3. Consider using pypy (2x faster): http://pypy.org/download.html#installing"
+    In short, it is as easy as `sudo apt-add repository ppa:pypy/ppa; sudo apt-get update; sudo apt-get install pypy3`
+    After that, don't forget to do `sudo apt-get install python3-tqdm`, otherwise it won't run.
     exec env python3 $0 "$@" 
 fi
 ":"""
@@ -15,7 +17,7 @@ import re
 import json
 import argparse
 import sys
-from tqdm import tqdm
+from tqdm import tqdm  # TODO: add option to run without tqdm even on pypy3
 import subprocess
 from typing import List, Dict, Tuple
 
