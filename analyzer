@@ -259,9 +259,18 @@ fi
 if ! [[ -f "$CELL" ]]; then
 	echo "Warning: could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
 	echo "Warning: will proceed using cell from the stream"
-	python3 extract_cell.py ${INPUT} > "${LOGS}/input.cell"
-	echo "Warning: using cell ${LOGS}/input.cell -- check if it's correct"
-	CELL="${LOGS}/input.cell"
+	if [[ -f ./extract_cell.py ]]; then
+		./extract_cell.py ${INPUT} > "${LOGS}/input.cell"
+		echo "Warning: using cell ${LOGS}/input.cell -- check if it's correct"
+		CELL="${LOGS}/input.cell"
+	elif command -v extract_cell.py 2 >/dev/null;  then
+		extract_cell.py ${INPUT} > "${LOGS}/input.cell"
+		echo "Warning: using cell ${LOGS}/input.cell -- check if it's correct"
+		CELL="${LOGS}/input.cell"
+	else
+		echo "Warning: 'extract_cell.py' is not in current or path, won\'t be used"
+		CELL=""
+	fi
 else
 	:
 fi
@@ -486,7 +495,7 @@ done
 
 if [[ -f ./multilattice_validate.py ]]; then
 	./multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
-elif command -v multilattice_validate.py 2>/dev/null;  then
+elif command -v multilattice_validate.py &> /dev/null;  then
 	multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
 else
 	echo "Warning: 'multilattice_validate.py' is not in current or path, won\'t be used"
