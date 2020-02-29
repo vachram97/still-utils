@@ -243,32 +243,37 @@ done
 # CHECKING THAT ALL INPUT PARAMETERS ARE VALID #
 ################################################
 
+# check validity of INPUT
+if ! [[ -f "$INPUT" ]]; then
+	echo -e "\e[31mError:\e[0m input file <${INPUT}> not found"; exit 1
+fi
+
 # check validity of LOGS
 if [[ "${LOGS}" == "" ]]; then
-	echo "You have not provided --logs, will use default value"
+	echo -e "\e[33mWarning:\e[0m you have not provided --logs, will use default value"
 	HASH=$(md5sum "${INPUT}" | head -c 6)
-	if ! [[ -d "logs" ]]; then echo "Warning: will create ./logs folder"; fi
+	if ! [[ -d "logs" ]]; then echo -e "\e[33mWarning:\e[0m will create ./logs folder"; fi
 	LOGS="logs/analyzer.${HASH}.$(date +%F-%H-%M-%S)"
 	mkdir -p "${LOGS}"
 else
-	if [[ -d "$LOGS" ]]; then echo "Error: folder <${LOGS}> exist, will not proceed"; exit 1; fi
+	if [[ -d "$LOGS" ]]; then echo -e "\e[31mError:\e[0m folder <${LOGS}> exist, will not proceed"; exit 1; fi
 	mkdir -p "$LOGS"
 fi
 
 # check validity of CELL
 if ! [[ -f "$CELL" ]]; then
-	echo "Warning: could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
-	echo "Warning: will proceed using cell from the stream"
+	echo -e "\e[33mWarning:\e[0m could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
+	echo -e "\e[33mWarning:\e[0m will proceed using cell from the stream"
 	if [[ -f ./extract_cell.py ]]; then
 		./extract_cell.py ${INPUT} > "${LOGS}/input.cell"
-		echo "Warning: using cell ${LOGS}/input.cell -- check if it's correct"
+		echo -e "\e[33mWarning:\e[0m using cell ${LOGS}/input.cell -- check if it's correct"
 		CELL="${LOGS}/input.cell"
 	elif command -v extract_cell.py 2 >/dev/null;  then
 		extract_cell.py ${INPUT} > "${LOGS}/input.cell"
-		echo "Warning: using cell ${LOGS}/input.cell -- check if it's correct"
+		echo -e "\e[33mWarning:\e[0m using cell ${LOGS}/input.cell -- check if it's correct"
 		CELL="${LOGS}/input.cell"
 	else
-		echo "Warning: 'extract_cell.py' is not in current or path, won\'t be used"
+		echo -e "\e[33mWarning:\e[0m 'extract_cell.py' is not in current or path, won\'t be used"
 		CELL=""
 	fi
 else
@@ -280,98 +285,98 @@ is_integer='^[0-9]+$'
 if ! [[ ${NPROC} =~ $is_integer ]] ; then
 	echo "Erorr: NPROC should be a valid number, now <${NPROC}>"; exit 1; fi
 if [ "${NPROC}" -gt "$(nproc)" ]; then
-	echo "Error: NPROC should be less or equal than maximum available $(nproc)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m NPROC should be less or equal than maximum available $(nproc)"; exit 1; fi
 if [ "${NPROC}" -lt 1 ]; then
-	echo "Warning: will use all available processors, since you provided ${NPROC} < 1"; fi
+	echo -e "\e[33mWarning:\e[0m will use all available processors, since you provided ${NPROC} < 1"; fi
 
 # check validity of HISTOGRAM
 if  [ "$HISTOGRAM" -ne 1 ] && [ "$HISTOGRAM" -ne 0 ]; then
-	echo "Error: HISTOGRAM should be either 1 or 0, you provided <${HISTOGRAM}>."; exit 1; fi
+	echo -e "\e[31mError:\e[0m HISTOGRAM should be either 1 or 0, you provided <${HISTOGRAM}>."; exit 1; fi
 
 # check validity of CLEANUP
 if  [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
-	echo "Error: CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."; exit 1; fi
+	echo -e "\e[31mError:\e[0m CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."; exit 1; fi
 
 # check validity of LOWRES and HIGHRES
 is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${LOWRES} == "" ]]; then
-	echo "Warning: LOWRES will be 30.0 by default"
+	echo -e "\e[33mWarning:\e[0m LOWRES will be 30.0 by default"
 	LOWRES=30.0; fi
 if [[ ${HIGHRES} == "" ]]; then
-	echo "Warning: HIGHRES will be 3.0 by default"
+	echo -e "\e[33mWarning:\e[0m HIGHRES will be 3.0 by default"
 	HIGHRES=3.0; fi
 if ! [[ ${LOWRES} =~ $is_float_positive ]]; then
-	echo "Error: LOWRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m LOWRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
 if ! [[ ${HIGHRES} =~ $is_float_positive ]]; then
-	echo "Error: HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"; exit 1; fi
 if (( $(echo "${HIGHRES} >= ${LOWRES}" |bc -l) )); then
-	echo "Error: HIGHRES >= LOWRES"; exit 1; fi
+	echo -e "\e[31mError:\e[0m HIGHRES >= LOWRES"; exit 1; fi
 
 # check validity of PUSHRES
 is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${PUSHRES} == "" ]]; then
-	echo "Warning: will use default PUSHRES=1.0"; PUSHRES=1.0; fi
+	echo -e "\e[33mWarning:\e[0m will use default PUSHRES=1.0"; PUSHRES=1.0; fi
 if ! [[ ${PUSHRES} =~ $is_float_positive ]]; then
-	echo "Error: PUSHRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m PUSHRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
 
 # check validity of ITERATIONS
 is_integer='^[0-9]+$'
 if [[ ${ITERATIONS} == "" ]]; then
-	echo "Warning: will use default ITERATIONS=0"; ITERATIONS=0; fi
+	echo -e "\e[33mWarning:\e[0m will use default ITERATIONS=0"; ITERATIONS=0; fi
 if ! [[ ${ITERATIONS} =~ $is_integer ]]; then
-	echo "Error: ITERATIONS should be valid integer number, e.g. 3 (but '03' or '3.' would be invalid)"; exit 1; 
+	echo -e "\e[31mError:\e[0m ITERATIONS should be valid integer number, e.g. 3 (but '03' or '3.' would be invalid)"; exit 1; 
 elif [ ${ITERATIONS} -ge 3 ]; then
-	echo "Warning: are you sure ITERATIONS should be more than 2? It may cause unstable merging and scaling"
+	echo -e "\e[33mWarning:\e[0m are you sure ITERATIONS should be more than 2? It may cause unstable merging and scaling"
 fi
 
 # check validity of HIGHRES_INCLUDE
 is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${HIGHRES_INCLUDE} == "" ]]; then
-	echo "Warning: will use default HIGHRES_INCLUDE=100.0 (basically, include all possible resolutions)"; 
+	echo -e "\e[33mWarning:\e[0m will use default HIGHRES_INCLUDE=100.0 (basically, include all possible resolutions)"; 
 	HIGHRES_INCLUDE=100.0; 
 fi
 if ! [[ ${HIGHRES_INCLUDE} =~ $is_float_positive ]]; then
-	echo "Error: HIGHRES_INCLUDE should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m HIGHRES_INCLUDE should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
 
 # check validity of MULTI_RMSD
 is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${MULTI_RMSD} == "" ]]; then
-	echo "Warning: will use default MULTI_RMSD=5.0 degrees"; MULTI_RMSD=5.0; fi
+	echo -e "\e[33mWarning:\e[0m will use default MULTI_RMSD=5.0 degrees"; MULTI_RMSD=5.0; fi
 if ! [[ ${MULTI_RMSD} =~ $is_float_positive ]]; then
-	echo "Error: MULTI_RMSD should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m MULTI_RMSD should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
 if (( $(echo "${MULTI_RMSD} > 30.0" |bc -l) )); then
-	echo "Warning: are you sure you want your MULTI_RMSDs be that large? It may give unreasonably high false multiples number"; fi
+	echo -e "\e[33mWarning:\e[0m are you sure you want your MULTI_RMSDs be that large? It may give unreasonably high false multiples number"; fi
 
 # check validity of MIN_CC
 is_float='^\-{0,1}[0-9]*\.[0-9]*$'
 if [[ ${MIN_CC} == "" ]]; then
-	echo "Warning: will use default MIN_CC=-1.0"; MIN_CC=-1.0; fi
+	echo -e "\e[33mWarning:\e[0m will use default MIN_CC=-1.0"; MIN_CC=-1.0; fi
 if ! [[ ${MIN_CC} =~ $is_float ]]; then
 	echo "$MIN_CC"
-	echo "Error: MIN_CC should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m MIN_CC should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
 if (( $(echo "${MIN_CC} > 1.0" |bc -l) )) || (( $(echo "${MIN_CC} < -1.0" |bc -l) )); then
-	echo "Error: |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"; exit 1; fi
+	echo -e "\e[31mError:\e[0m |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"; exit 1; fi
 
 # check validity of MODEL
 if [[ ${MERGING} == "partialator" ]]; then
 	if [[ ${MODEL} == "" ]]; then
-		echo "Warning: will use 'unity' model by default"; MODEL="unity"; fi
+		echo -e "\e[33mWarning:\e[0m will use 'unity' model by default"; MODEL="unity"; fi
 
 	if ! [[ ${MODEL} == "unity" ]] && [[ ${MODEL} == "xsphere" ]]; then
-		echo "Error: MODEL should be either 'unity' or 'xsphere'"; exit 1; fi
+		echo -e "\e[31mError:\e[0m MODEL should be either 'unity' or 'xsphere'"; exit 1; fi
 fi
 
 # check validity of SYMMETRY
 if ! [[ ${MERGING} == "none" ]] && [[ ${SYMMETRY} == "" ]]; then
-	echo "Error: you must provide SYMMETRY, if you do merging"; exit 1; fi
+	echo -e "\e[31mError:\e[0m you must provide SYMMETRY, if you do merging"; exit 1; fi
 
 
 # check validity of RATE
 if [[ "$RATE" != "" ]]; then
 	if [[ ${CELL} == "" ]]; then
-		echo "Error: you must provide valid cell file"; exit 1
+		echo -e "\e[31mError:\e[0m you must provide valid cell file"; exit 1
 	elif ! [[ -f ${CELL} ]]; then
-		echo "Error: the cell file <${CELL}> you provided does not exist"; exit 1
+		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided does not exist"; exit 1
 	fi
 fi
 
@@ -498,7 +503,7 @@ if [[ -f ./multilattice_validate.py ]]; then
 elif command -v multilattice_validate.py &> /dev/null;  then
 	multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
 else
-	echo "Warning: 'multilattice_validate.py' is not in current or path, won\'t be used"
+	echo -e "\e[33mWarning:\e[0m 'multilattice_validate.py' is not in current or path, won\'t be used"
 fi
 
 
@@ -548,7 +553,7 @@ fi
 if ! [[ "$MERGING" == "none" ]]; then
 	# check whether data have been properly merged
 	if ! [[ -f ${LOGS}/merged.hkl ]]; then
-		echo "Error: data were not properly merged"
+		echo -e "\e[31mError:\e[0m data were not properly merged"
 		echo "See ${LOGS}/${MERGING}.log for full log"
 		exit 1
 	fi
@@ -566,7 +571,7 @@ fi
 ###########
 if [ "$CLEANUP" -eq 0 ]; then
 	echo "......."
-	echo "Warning: will not do cleanup"
+	echo -e "\e[33mWarning:\e[0m will not do cleanup"
 else # no elif here -- validity check above guaranteers that else is enough
 	if [[ -f tmp.stream ]]; then rm tmp.stream; fi
 fi
