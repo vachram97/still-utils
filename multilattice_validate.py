@@ -15,17 +15,35 @@ def read_stream(filename: str, print_multiples=None) -> Dict:
     """\
     Read stream and return dictionary {image_tag:[unit_cell_1, unit_cell_2,...]}
     """
-    begin_chunk = lambda s: "Begin chunk" in s
-    end_chunk = lambda s: "End chunk" in s
-    begin_crystal = lambda s: "Begin crystal" in s
-    end_crystal = lambda s: "End crystal" in s
-    image_filename = lambda s: s.startswith("Image filename")
-    event = lambda s: s.startswith("Event")
-    has_inverse = lambda s: "star" in s and (
-        s.startswith("astar") or s.startswith("bstar") or s.startswith("cstar")
-    )
-    has_cellparams = lambda s: s.startswith("Cell parameters")
-    peaksfromlist = lambda s: "Peaks from peak search" in s
+
+    def begin_chunk(s):
+        return "Begin chunk" in s
+
+    def end_chunk(s):
+        return "End chunk" in s
+
+    def begin_crystal(s):
+        return "Begin crystal" in s
+
+    def end_crystal(s):
+        return "End crystal" in s
+
+    def image_filename(s):
+        return s.startswith("Image filename")
+
+    def event(s):
+        return s.startswith("Event")
+
+    def has_inverse(s):
+        return "star" in s and (
+            s.startswith("astar") or s.startswith("bstar") or s.startswith("cstar")
+        )
+
+    def has_cellparams(s):
+        return s.startswith("Cell parameters")
+
+    def peaksfromlist(s):
+        return "Peaks from peak search" in s
 
     def cell_params(line: str):
         """Return inverse lattice params extracted from the line"""
@@ -132,6 +150,12 @@ def main(args: List[str]):
     args = parser.parse_args()
     parsed_stream = read_stream(args.stream, print_multiples=args.out)
     parsed_lattices = [[elem[0] for elem in chunk] for chunk in parsed_stream.values()]
+
+    # check if there are any crystals in the input stream
+    if len(parsed_lattices) == 0:
+        print("No lattices found in input stream")
+        return
+
     max_lattices_on_one_crystal = max([len(i) for i in parsed_lattices])
 
     acc_total_images, acc_total_crystals, acc_true_crystals, acc_false_crystals = (
