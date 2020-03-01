@@ -150,6 +150,12 @@ def main(args: List[str]):
     args = parser.parse_args()
     parsed_stream = read_stream(args.stream, print_multiples=args.out)
     parsed_lattices = [[elem[0] for elem in chunk] for chunk in parsed_stream.values()]
+
+    # check if there are any crystals in the input stream
+    if len(parsed_lattices) == 0:
+        print("No lattices found in input stream")
+        return
+
     max_lattices_on_one_crystal = max([len(i) for i in parsed_lattices])
 
     acc_total_images, acc_total_crystals, acc_true_crystals, acc_false_crystals = (
