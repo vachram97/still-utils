@@ -6,6 +6,8 @@ if [ -x "$(command -v pypy3)" ]; then
     exec pypy3 $0 "$@" 
 else
     echo "Running with python3. Consider using pypy (2x faster): http://pypy.org/download.html#installing"
+    In short, it is as easy as `sudo apt-add repository ppa:pypy/ppa; sudo apt-get update; sudo apt-get install pypy3`
+    After that, don't forget to do `sudo apt-get install python3-tqdm`, otherwise it won't run.
     exec env python3 $0 "$@" 
 fi
 ":"""
@@ -15,7 +17,7 @@ import re
 import json
 import argparse
 import sys
-from tqdm import tqdm
+from tqdm import tqdm  # TODO: add option to run without tqdm even on pypy3
 import subprocess
 from typing import List, Dict, Tuple
 
@@ -32,7 +34,7 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
         Dict -- dictionary containing all peak positions from peakfinder. Format is {('image_filename','event'):(panel,fs,ss)}
     """
 
-    stderr = sys.stderr if debug else open(os.devnull,'w')
+    stderr = sys.stderr if debug else open(os.devnull, "w")
     answ_crystals, answ_chunks = {}, {}
 
     def contains_filename(s):
@@ -66,13 +68,18 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
         current_serial_number = None
         corrupted_chunk = False
 
-        total_number_of_lines = subprocess.check_output(f'wc -l {filename}', shell=True)
+        total_number_of_lines = subprocess.check_output(f"wc -l {filename}", shell=True)
         total_number_of_lines = int(total_number_of_lines.decode().split()[0])
 
-        for line in tqdm(stream, desc="Reading stream", bar_format='{l_bar}{bar}{r_bar}', total=total_number_of_lines):
+        for line in tqdm(
+            stream,
+            desc="Reading stream",
+            bar_format="{l_bar}{bar}{r_bar}",
+            total=total_number_of_lines,
+        ):
             try:
                 if corrupted_chunk:
-                    if 'Begin chunk' not in line:
+                    if "Begin chunk" not in line:
                         continue
                     else:
                         is_crystal, is_chunk = False, False
@@ -86,9 +93,9 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                     current_serial_number = line.split()[-1]
                 elif starts_chunk_peaks(line):
                     # image_id = (
-                        # (current_filename, current_event, current_serial_number)
-                        # if current_event is not None
-                        # else (current_filename, current_serial_number)
+                    # (current_filename, current_event, current_serial_number)
+                    # if current_event is not None
+                    # else (current_filename, current_serial_number)
                     # )
                     is_chunk = True
                     continue
@@ -123,7 +130,7 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                         }
 
             except Exception as e:
-                print(f"    Caught {e} on current line: {line}", end='', file=stderr)
+                print(f"    Caught {e} on current line: {line}", end="", file=stderr)
                 corrupted_chunk = True
                 continue
 
@@ -134,7 +141,7 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                 elif is_crystal:
                     _, _, _, _, _, _, _, fs, ss, panel = [i for i in line.split()]
             except Exception as e:
-                print(f"    Caught {e} on current line: {line}", end='', file=stderr)
+                print(f"    Caught {e} on current line: {line}", end="", file=stderr)
                 corrupted_chunk = True
                 continue
 
@@ -159,7 +166,9 @@ def main(args: List[str]):
     parser.add_argument(
         "--crystals", help="Whether save crystal peaks or not", default=True
     )
-    parser.add_argument('--debug', help="Don't supress lines with errors", default=False)
+    parser.add_argument(
+        "--debug", help="Don't supress lines with errors", default=False
+    )
 
     args = parser.parse_args()
     chunks, crystals = parse_stream(args.stream, debug=args.debug)
