@@ -374,11 +374,13 @@ fi
 
 
 # check validity of RATE
-if [[ "$RATE" != "" ]]; then
+if [[ "$RATE" == "TRUE" ]]; then
 	if [[ ${CELL} == "" ]]; then
 		echo -e "\e[31mError:\e[0m you must provide valid cell file"; exit 1
 	elif ! [[ -f ${CELL} ]]; then
 		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided does not exist"; exit 1
+	elif [[ $(wc -l < ${CELL}) -lt 6 ]]; then
+		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided has less than 6 lines and thereby is probably empty"; exit 1
 	fi
 fi
 
