@@ -16,3 +16,5 @@ images
 # Python stuff
 __pycache__
 .vscode
+*.dat  # cprofile 
+*.png  # cprofile visualization
