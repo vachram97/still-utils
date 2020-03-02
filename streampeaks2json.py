@@ -85,11 +85,6 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                 elif contains_serial_number(line):
                     current_serial_number = line.split()[-1]
                 elif starts_chunk_peaks(line):
-                    # image_id = (
-                        # (current_filename, current_event, current_serial_number)
-                        # if current_event is not None
-                        # else (current_filename, current_serial_number)
-                    # )
                     is_chunk = True
                     continue
 
@@ -97,10 +92,10 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                     is_chunk = False
                     if current_event is not None:
                         answ_chunks[
-                            (current_filename, current_event, current_serial_number)
+                            (current_filename, current_event)
                         ] = {"fs": float(fs), "ss": float(ss), "panel": panel}
                     else:
-                        answ_chunks[(current_filename, current_serial_number)] = {
+                        answ_chunks[(current_filename )] = {
                             "fs": float(fs),
                             "ss": float(ss),
                             "panel": panel,
@@ -113,10 +108,10 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                     is_crystal = False
                     if current_event is not None:
                         answ_crystals[
-                            (current_filename, current_event, current_serial_number)
+                            (current_filename, current_event)
                         ] = {"fs": float(fs), "ss": float(ss), "panel": panel}
                     else:
-                        answ_crystals[(current_filename, current_serial_number)] = {
+                        answ_crystals[(current_filename)] = {
                             "fs": float(fs),
                             "ss": float(ss),
                             "panel": panel,
