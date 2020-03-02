@@ -2,6 +2,7 @@
 
 import h5py
 import numpy as np
+from tqdm import tqdm
 from itertools import chain, product
 import matplotlib.pyplot as plt
 from typing import Dict
@@ -40,11 +41,11 @@ def peak_profiles(nparray: np.ndarray, size_compare=1, size_return=3) -> list:
         nparray {np.ndarray} -- input numpy array with full images
     
     Returns:
-        list -- peak profiles
+        dict -- peak profiles
     """
 
     pks = _peaks_from_ndarray(nparray, size=size_compare)
-    answ = []
+    answ = {}
 
     if len(nparray.shape) == 3:
         for n, x, y in zip(*pks):
@@ -52,7 +53,14 @@ def peak_profiles(nparray: np.ndarray, size_compare=1, size_return=3) -> list:
                 x - size_return : x + size_return + 1,
                 y - size_return : y + size_return + 1,
             ]
-            answ.append(profile)
+            answ[(x, y)] = profile
+    else:
+        for x, y in zip(*pks):
+            profile = nparray[
+                x - size_return : x + size_return + 1,
+                y - size_return : y + size_return + 1,
+            ]
+            answ[(x, y)] = profile
 
     return answ
 
@@ -87,4 +95,74 @@ def extract_hits(
             current_nparray = np.array(f[cxi_path][idx])
             hits[current_key] = current_nparray
 
-            peaks = peak_profiles(hits, size_compare=size_compare, size_return=size_return)
+            peaks = peak_profiles(
+                current_nparray, size_compare=size_compare, size_return=size_return
+            )
+
+            size = 2*size_return + 1
+            for (x, y), profile in tqdm(peaks.items()):
+                if profile.shape == (size, size):
+                    answ[(*current_key, x, y)] = list(profile.flatten())
+
+    return answ
+
+
+indices = [
+    int(i)
+    for i in [
+        "5398",
+        "9958",
+        "5574",
+        "2702",
+        "9270",
+        "6242",
+        "5885",
+        "6367",
+        "7444",
+        "5851",
+        "8477",
+        "9686",
+        "6931",
+        "9697",
+        "6042",
+        "8964",
+        "8906",
+        "5313",
+        "6137",
+        "5754",
+        "9442",
+        "5557",
+        "9944",
+        "5675",
+        "8717",
+        "5816",
+        "5919",
+        "7315",
+        "8245",
+        "9863",
+        "8267",
+        "6187",
+        "5829",
+        "9855",
+        "6126",
+        "5345",
+        "6986",
+        "8997",
+        "6319",
+        "9515",
+        "9627",
+        "7200",
+        "6946",
+        "5235",
+        "5795",
+        "6940",
+        "6112",
+        "5488",
+        "7295",
+        "9571",
+        "5312",
+        "6203",
+        "6243",
+    ]
+]
+
