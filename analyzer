@@ -229,7 +229,7 @@ while [[ $# -gt 0 ]]; do
 	shift
 	;;
 	#----------------------------------------
-		--symmetry)
+		--symmetry|-y)
 			SYMMETRY="$2"
 	shift
 	;;
@@ -367,8 +367,10 @@ if [[ ${MERGING} == "partialator" ]]; then
 fi
 
 # check validity of SYMMETRY
-if ! [[ ${MERGING} == "none" ]] && [[ ${SYMMETRY} == "" ]]; then
-	echo -e "\e[31mError:\e[0m you must provide SYMMETRY, if you do merging"; exit 1; fi
+if ! [[ ${MERGING} == "none" ]]; then
+	if [[ ${SYMMETRY} == "" ]]; then
+	echo -e "\e[31mError:\e[0m you must provide SYMMETRY instead of <${SYMMETRY}>, if you do merging"; exit 1; fi
+fi
 
 
 # check validity of RATE
