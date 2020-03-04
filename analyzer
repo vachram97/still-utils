@@ -390,6 +390,8 @@ fi
 # RATE FUNCTION #
 #################
 function rate() {
+	echo "Wait, rating is in progress..."
+
 	# outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
     HKL_TEMPLATE="$1"
 	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
@@ -499,9 +501,7 @@ for method in "${METHODS[@]}"; do
 done
 
 
-# TODO: working on calling external validation tools
-# -multilattice_validate.py (this repo)
-
+# calling multilattice_validate.py (this repo)
 if [[ -f ./multilattice_validate.py ]]; then
 	./multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
 elif command -v multilattice_validate.py &> /dev/null;  then
@@ -563,10 +563,6 @@ if ! [[ "$MERGING" == "none" ]]; then
 	fi
 	rate "${LOGS}/merged.hkl"
 fi
-
-
-
-
 
 
 
