@@ -105,7 +105,7 @@ CLEANUP=1
 LOWRES=""
 HIGHRES=""
 SYMMETRY=""
-PUSHRES=""  # FIXME: bug with pushres not being read
+PUSHRES="" 
 HIGHRES_INCLUDE=""
 MIN_CC=""
 ITERATIONS=""
@@ -362,7 +362,7 @@ if [[ ${MERGING} == "partialator" ]]; then
 	if [[ ${MODEL} == "" ]]; then
 		echo -e "\e[33mWarning:\e[0m will use 'unity' model by default"; MODEL="unity"; fi
 
-	if ! [[ ${MODEL} == "unity" ]] && [[ ${MODEL} == "xsphere" ]]; then
+	if ! [[ ${MODEL} == "unity" ]] && ! [[ ${MODEL} == "xsphere" ]]; then
 		echo -e "\e[31mError:\e[0m MODEL should be either 'unity' or 'xsphere'"; exit 1; fi
 fi
 
@@ -479,8 +479,8 @@ echo "Images for processing:      ${NIMAGES_INPUT}"
 echo "Number of processed images: ${NIMAGES}"
 echo "Number of indexed images:   ${NINDEXED}"
 echo "Number of crystals:  ${NCRYST}"
-echo "Image indexing rate: $(echo "scale=2; ${NINDEXED}/${NIMAGES}" | bc)"
-echo "Crystals percentage: $(echo "scale=2; ${NCRYST}/${NIMAGES}" | bc)"
+echo "Image indexing rate: $(python -c "print(round(100*${NINDEXED}/${NIMAGES}.,2))") %"
+echo "Crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES}.,2))") %"  
 
 
 echo "======================="
