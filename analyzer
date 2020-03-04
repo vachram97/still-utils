@@ -56,7 +56,7 @@ Workflow parameters:
 		If --nproc=0 or less, will use all availalbe and print warning.
 	--logs
 		A folder to write logs in. By default, logs/analyzer.<stream_md5sum>.<date>
-	--histogram
+	--histograms
 		Whether to write histogram of resolutions or not (0 or 1).
 		By default 1 -- does not build a histogram.
 	--cleanup
@@ -99,8 +99,8 @@ MERGING="none"
 RATE=""
 NPROC=$(nproc)
 LOGS=""
-HISTOGRAM=1
 CLEANUP=1
+HISTOGRAMS=""  # TODO: add BINS and other histogram plotting parameters
 #---------
 LOWRES=""
 HIGHRES=""
@@ -174,8 +174,8 @@ while [[ $# -gt 0 ]]; do
 	shift
 	;;
 	#----------------------------------------
-		--histogram)
-			HISTOGRAM="$2"
+		--histograms)
+			HISTOGRAMS="$2"
 	shift
 	;;
 	#----------------------------------------
@@ -289,9 +289,17 @@ if [ "${NPROC}" -gt "$(nproc)" ]; then
 if [ "${NPROC}" -lt 1 ]; then
 	echo -e "\e[33mWarning:\e[0m will use all available processors, since you provided ${NPROC} < 1"; fi
 
-# check validity of HISTOGRAM
-if  [ "$HISTOGRAM" -ne 1 ] && [ "$HISTOGRAM" -ne 0 ]; then
-	echo -e "\e[31mError:\e[0m HISTOGRAM should be either 1 or 0, you provided <${HISTOGRAM}>."; exit 1; fi
+# check validity of HISTOGRAMS
+if  [[ "${HISTOGRAMS}" == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m will use HISTOGRAMS=1 (do plot histograms) by default"
+	HISTOGRAMS="1"
+elif [[ "${HISTOGRAMS}" == "1" ]] || [[ "${HISTOGRAMS}" == "0" ]]; then
+	:
+else
+	echo -e "\e[31mError:\e[0m HISTOGRAMS should be either '1' or '0', you provided <${HISTOGRAMS}>."; 
+	exit 1; 
+fi
+
 
 # check validity of CLEANUP
 if  [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
@@ -513,10 +521,19 @@ fi
 
 # PART WHERE I EXECUTE EXTERNAL SCRIPTS
 #	- detector-shift -- compare shifted and non-shifted values # TODO
+
+
 # PART WHERE I DRAW HISTOGRAMS
-#	- indexed resolution histogram # TODO
-#	- non-indexed resolution histogram # TODO
-#	- full resolution histogram # TODO
+if [[ ${HISTOGRAMS} == "1" ]]; then
+	echo "Parameter: num_peaks (all chunks)"
+	grep "num_peaks" ${INPUT} | hist.py --xmin 2.0 --xmax 30.0 --bins 28
+	echo "Parameter: diffraction_resolution_limit (crystals)"
+	grep "diffraction_resolution_limit" ${INPUT} | hist.py --xmax 7.0 --column -2
+	echo "Parameter: num_peaks (only chunks with crystals)"
+	grep "num_peaks\|diffraction_resolution_limit" ${INPUT} \
+		| grep -B 1 "diffraction_resolution" \
+		| grep "num" | hist.py  --xmax 40.0 --xmin 0.0
+fi
 
 
 # PART WHERE I MERGE THE DATA

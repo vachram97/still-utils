@@ -29,7 +29,7 @@ def plot_hist(
         xmax {np.float} -- maximum for histogram plotting
     """
     input_array = np.array(input_array)
-    mask = (input_array < xmax) & (input_array > xmin)
+    mask = (input_array <= xmax) & (input_array >= xmin)
     input_array = input_array[mask]
     h, b = np.histogram(input_array, bins)
 
@@ -77,10 +77,16 @@ def main(args):
     )
     args = parser.parse_args()
 
+    def _extract_float(elem, column):
+        try:
+            return float(elem.split()[column])
+        except:
+            return None
+
     data = [
-        float(elem.split()[args.column])
+        _extract_float(elem, args.column)
         for elem in args.stdin.read().split("\n")
-        if elem
+        if _extract_float(elem, args.column) is not None
     ]
     plot_hist(
         data,
