@@ -149,24 +149,9 @@ def main(args: List[str]):
         if cur is not None:
             answ.append(cur)
 
-    xs, ys, rs = np.array(answ).T
+    fs, ss, rs = np.array(answ).T
 
-    print(f"Values: <x>: {xs.mean():.2f}\t<y>: {ys.mean():.2f}")
-    print(f"Stds:   <x>: {xs.std():.2f}\t<y>: {ys.std():.2f}")
-    print("-" * 50)
-
-    median_radius = np.median(rs)
-    good_radii_mask = (rs < median_radius * 1.05) & (rs > median_radius * 0.95)
-
-    print(
-        f"Values: <x>: {xs[good_radii_mask].mean():.2f}\t<y>: {ys[good_radii_mask].mean():.2f}"
-    )
-    print(
-        f"Stds:   <x>: {xs[good_radii_mask].std():.2f}\t<y>: {ys[good_radii_mask].std():.2f}"
-    )
-
-    return points, answ
-
+    return radial_binning(fs, ss, rs)
 
 if __name__ == "__main__":
-    points, answ = main(sys.argv[1:])
+    df = main(sys.argv[1:])
