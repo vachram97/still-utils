@@ -9,6 +9,34 @@ from typing import List
 from itertools import combinations
 
 
+def radial_binning(xs: np.ndarray, ys: np.ndarray, rs: np.ndarray, N=1000) -> np.ndarray:
+    """
+    Returns binned by radius table
+    
+    Arguments:
+        xs {np.ndarray} -- np.ndarray of x values
+        ys {np.ndarray} -- np.ndarray of y values
+        rs {np.ndarray} -- np.ndarray of r values
+    
+    Keyword Arguments:
+        N {int} -- number of bins (default: {1000})
+    
+    Returns:
+        answ {np.ndarray} -- (len(xs), 4) shape
+    """
+    rmin, rmax = rs.min(), rs.max()
+    step = (rmax - rmin) / N
+    answ = []
+    for rcur, _ in enumerate(np.linspace(rmin, rmax, N)):
+        mask = (rs < rcur + step) & (rs >= rcur)
+        rmean = rs[mask].mean()
+        num = mask.sum()
+        xmean = xs[mask].mean()
+        ymean = ys[mask].mean()
+        answ.append([rmean, num, xmean, ymean])
+    return np.array(answ)
+
+
 def ang(v1, v2):
     """
     Returns angle between two vectors
@@ -111,7 +139,7 @@ def main(args: List[str]):
 
     points = np.array([(elem["fs"], elem["ss"]) for elem in peaks.values()])
     presumable_centre = points.mean(axis=0)
-    presumable_centre = np.array([722, 704])
+    presumable_centre = np.array([714, 724])
     answ = []
 
     for _ in tqdm(range(args.iterations), desc="Sampling points"):
@@ -125,7 +153,7 @@ def main(args: List[str]):
 
     print(f"Values: <x>: {xs.mean():.2f}\t<y>: {ys.mean():.2f}")
     print(f"Stds:   <x>: {xs.std():.2f}\t<y>: {ys.std():.2f}")
-    print('-'*50)
+    print("-" * 50)
 
     median_radius = np.median(rs)
     good_radii_mask = (rs < median_radius * 1.05) & (rs > median_radius * 0.95)
