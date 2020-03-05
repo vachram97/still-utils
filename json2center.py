@@ -16,7 +16,7 @@ def ang(v1, v2):
     return np.abs(np.arccos(np.dot(v1, v2) / np.linalg.norm(v1) / np.linalg.norm(v2)))
 
 
-def check_inside(triangle: np.ndarray, point: np.ndarray) -> bool:
+def is_inside(triangle: np.ndarray, point: np.ndarray) -> bool:
     """
     Checks whether point is inside a triangle
     
@@ -46,7 +46,7 @@ def circle(points: np.ndarray, acute_angle=True, presumable_centre=None) -> np.n
         points {np.ndarray} -- (3,2)-shaped array
     
     Keyword Arguments:
-        acute_angle {bool} -- whether the points should be an acute-anbled triangle (default: {True}) # TODO
+        acute_angle {bool} -- whether the points should be an acute-anbled triangle (default: {True})
         presumable_centre {np.ndarr} -- approximate centre position to check whether it's inside triangle of points
     
     Returns:
@@ -61,6 +61,14 @@ def circle(points: np.ndarray, acute_angle=True, presumable_centre=None) -> np.n
             (x3 ** 2 + y3 ** 2 - x2 ** 2 - y2 ** 2),
         ]
     )
+
+    if acute_angle:
+        if not is_inside(points, points.mean(axis=0)):
+            return None
+
+    if presumable_centre is not None:
+        if not is_inside(points, presumable_centre):
+            return None
 
     if np.abs(np.linalg.det(A)) < 1e-3:
         return None
@@ -102,19 +110,25 @@ def main(args: List[str]):
     assert number_of_panels == 1, f"Wrong number of panels: {number_of_panels}"
 
     points = np.array([(elem["fs"], elem["ss"]) for elem in peaks.values()])
+    presumable_centre = points.mean(axis=0)
+    presumable_centre = np.array([722, 704])
     answ = []
 
     for _ in tqdm(range(args.iterations), desc="Sampling points"):
         idx = np.random.randint(points.shape[0], size=3)
         T = points[idx]
-        cur = circle(T)
+        cur = circle(T, acute_angle=True, presumable_centre=presumable_centre)
         if cur is not None:
             answ.append(cur)
 
     xs, ys, rs = np.array(answ).T
 
+    print(f"Values: <x>: {xs.mean():.2f}\t<y>: {ys.mean():.2f}")
+    print(f"Stds:   <x>: {xs.std():.2f}\t<y>: {ys.std():.2f}")
+    print('-'*50)
+
     median_radius = np.median(rs)
-    good_radii_mask = (rs < median_radius * 1.1) & (rs > median_radius * 0.9)
+    good_radii_mask = (rs < median_radius * 1.05) & (rs > median_radius * 0.95)
 
     print(
         f"Values: <x>: {xs[good_radii_mask].mean():.2f}\t<y>: {ys[good_radii_mask].mean():.2f}"
