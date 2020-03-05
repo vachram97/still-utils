@@ -121,11 +121,17 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
                     if current_event is not None:
                         answ_crystals[
                             (current_filename, current_event, current_serial_number)
-                        ] = {"fs": float(fs), "ss": float(ss), "panel": panel}
+                        ] = {
+                            "fs": float(fs),
+                            "ss": float(ss),
+                            "I": float(intensity),
+                            "panel": panel,
+                        }
                     else:
                         answ_crystals[(current_filename, current_serial_number)] = {
                             "fs": float(fs),
                             "ss": float(ss),
+                            "I": float(intensity),
                             "panel": panel,
                         }
 
@@ -137,9 +143,15 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
             # analyzing what we've got
             try:
                 if is_chunk:
-                    fs, ss, _, _, panel = [i for i in line.split()]
+                    #   fs/px   ss/px (1/d)/nm^-1   Intensity  Panel
+                    #  598.00  473.50       2.39      331.89   p0
+                    fs, ss, _, intensity, panel = [i for i in line.split()]
                 elif is_crystal:
-                    _, _, _, _, _, _, _, fs, ss, panel = [i for i in line.split()]
+                    #    h    k    l          I   sigma(I)       peak background  fs/px  ss/px panel
+                    #  -63   41    9     -41.31      57.45     195.00     170.86  731.0 1350.4 p0
+                    _, _, _, intensity, _, _, _, fs, ss, panel = [
+                        i for i in line.split()
+                    ]
             except Exception as e:
                 print(f"    Caught {e} on current line: {line}", end="", file=stderr)
                 corrupted_chunk = True
