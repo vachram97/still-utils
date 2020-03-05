@@ -6,9 +6,39 @@ import sys
 import argparse
 from tqdm import tqdm
 from typing import List
+from itertools import combinations
 
 
-def circle(points: np.ndarray, acute_angle=True, permutations=True) -> np.ndarray:
+def ang(v1, v2):
+    """
+    Returns angle between two vectors
+    """
+    return np.abs(np.arccos(np.dot(v1, v2) / np.linalg.norm(v1) / np.linalg.norm(v2)))
+
+
+def check_inside(triangle: np.ndarray, point: np.ndarray) -> bool:
+    """
+    Checks whether point is inside a triangle
+    
+    Arguments:
+        triangle {np.pdarray} -- triangle coordinates (3,2) shape
+        point {np.ndarray} -- point to check (x,y)
+    
+    Returns:
+        bool -- check value
+    """
+
+    a, b, c = triangle
+    oa, ob, oc = a - point, b - point, c - point
+    return (
+        np.abs(
+            sum([ang(v1, v2) for v1, v2 in combinations([oa, ob, oc], 2)]) - 2 * np.pi
+        )
+        < 1e-2
+    )
+
+
+def circle(points: np.ndarray, acute_angle=True, presumable_centre=None) -> np.ndarray:
     """
     Returns coordinates and radius of circumscribed circle for 3 points.
     
@@ -17,7 +47,7 @@ def circle(points: np.ndarray, acute_angle=True, permutations=True) -> np.ndarra
     
     Keyword Arguments:
         acute_angle {bool} -- whether the points should be an acute-anbled triangle (default: {True}) # TODO
-        permutations {bool} -- whether to use all permutations for computation (default: {True}) # TODO
+        presumable_centre {np.ndarr} -- approximate centre position to check whether it's inside triangle of points
     
     Returns:
         np.ndarray -- (x,y,R)
@@ -86,11 +116,15 @@ def main(args: List[str]):
     median_radius = np.median(rs)
     good_radii_mask = (rs < median_radius * 1.1) & (rs > median_radius * 0.9)
 
-    print(f'Values: <x>: {xs[good_radii_mask].mean():.2f}\t<y>: {ys[good_radii_mask].mean():.2f}')
-    print(f'Stds:   <x>: {xs[good_radii_mask].std():.2f}\t<y>: {ys[good_radii_mask].std():.2f}')
+    print(
+        f"Values: <x>: {xs[good_radii_mask].mean():.2f}\t<y>: {ys[good_radii_mask].mean():.2f}"
+    )
+    print(
+        f"Stds:   <x>: {xs[good_radii_mask].std():.2f}\t<y>: {ys[good_radii_mask].std():.2f}"
+    )
 
-    # return answ
+    return points, answ
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    points, answ = main(sys.argv[1:])
