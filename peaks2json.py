@@ -119,7 +119,7 @@ def parse_stream(filename: str, threshold: float, debug: bool) -> Tuple[Dict, Di
                 elif starts_crystal_peaks(line):
                     is_crystal = True
                     continue
-                elif ends_crystal_peaks(line) and float(intensity_crystal) >= threshold:
+                elif ends_crystal_peaks(line) and float(intensity_crystal) >= threshold:  # FIXME: bug -- this writes only the last peak from the chunk
                     is_crystal = False
                     if current_event is not None:
                         answ_crystals[
