@@ -7,22 +7,23 @@ import argparse
 from tqdm import tqdm
 from typing import List
 from itertools import combinations
+import matplotlib.pyplot as plt
 
 
-def radial_binning(xs: np.ndarray, ys: np.ndarray, rs: np.ndarray, N=1000) -> np.ndarray:
+def radial_binning(fs: np.ndarray, ss: np.ndarray, rs: np.ndarray, N=1000) -> np.ndarray:
     """
     Returns binned by radius table
-    
+
     Arguments:
-        xs {np.ndarray} -- np.ndarray of x values
-        ys {np.ndarray} -- np.ndarray of y values
+        fs {np.ndarray} -- np.ndarray of x values
+        ss {np.ndarray} -- np.ndarray of y values
         rs {np.ndarray} -- np.ndarray of r values
-    
+
     Keyword Arguments:
         N {int} -- number of bins (default: {1000})
-    
+
     Returns:
-        answ {np.ndarray} -- (len(xs), 4) shape
+        answ {np.ndarray} -- (len(fs), 4) shape: rmean, num, fsmean, ssmean
     """
     rmin, rmax = rs.min(), rs.max()
     step = (rmax - rmin) / N
@@ -31,9 +32,9 @@ def radial_binning(xs: np.ndarray, ys: np.ndarray, rs: np.ndarray, N=1000) -> np
         mask = (rs < rcur + step) & (rs >= rcur)
         rmean = rs[mask].mean()
         num = mask.sum()
-        xmean = xs[mask].mean()
-        ymean = ys[mask].mean()
-        answ.append([rmean, num, xmean, ymean])
+        fsmean = fs[mask].mean()
+        ssmean = ss[mask].mean()
+        answ.append([rmean, num, fsmean, ssmean])
     return np.array(answ)
 
 
@@ -47,11 +48,11 @@ def ang(v1, v2):
 def is_inside(triangle: np.ndarray, point: np.ndarray) -> bool:
     """
     Checks whether point is inside a triangle
-    
+
     Arguments:
         triangle {np.pdarray} -- triangle coordinates (3,2) shape
         point {np.ndarray} -- point to check (x,y)
-    
+
     Returns:
         bool -- check value
     """
@@ -60,7 +61,8 @@ def is_inside(triangle: np.ndarray, point: np.ndarray) -> bool:
     oa, ob, oc = a - point, b - point, c - point
     return (
         np.abs(
-            sum([ang(v1, v2) for v1, v2 in combinations([oa, ob, oc], 2)]) - 2 * np.pi
+            sum([ang(v1, v2)
+                 for v1, v2 in combinations([oa, ob, oc], 2)]) - 2 * np.pi
         )
         < 1e-2
     )
@@ -69,14 +71,14 @@ def is_inside(triangle: np.ndarray, point: np.ndarray) -> bool:
 def circle(points: np.ndarray, acute_angle=True, presumable_centre=None) -> np.ndarray:
     """
     Returns coordinates and radius of circumscribed circle for 3 points.
-    
+
     Arguments:
         points {np.ndarray} -- (3,2)-shaped array
-    
+
     Keyword Arguments:
         acute_angle {bool} -- whether the points should be an acute-anbled triangle (default: {True})
         presumable_centre {np.ndarr} -- approximate centre position to check whether it's inside triangle of points
-    
+
     Returns:
         np.ndarray -- (x,y,R)
     """
@@ -112,7 +114,7 @@ def circle(points: np.ndarray, acute_angle=True, presumable_centre=None) -> np.n
 def main(args: List[str]):
     """
     The main function
-    
+
     Arguments:
         args {List[str]} -- arguments
     """
@@ -138,8 +140,9 @@ def main(args: List[str]):
     assert number_of_panels == 1, f"Wrong number of panels: {number_of_panels}"
 
     points = np.array([(elem["fs"], elem["ss"]) for elem in peaks.values()])
-    presumable_centre = points.mean(axis=0)
-    presumable_centre = np.array([714, 724])
+
+    # presumable_centre = points.mean(axis=0)
+    presumable_centre = np.array([719, 711])
     answ = []
 
     for _ in tqdm(range(args.iterations), desc="Sampling points"):
@@ -153,5 +156,7 @@ def main(args: List[str]):
 
     return radial_binning(fs, ss, rs)
 
+
 if __name__ == "__main__":
-    df = main(sys.argv[1:])
+    # rmean, num, fsmean, ssmean = main(sys.argv[1:]).T
+    points = main(sys.argv[1:])
