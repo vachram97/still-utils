@@ -8,9 +8,10 @@ from tqdm import tqdm
 from typing import List
 from itertools import combinations
 import matplotlib.pyplot as plt
+import warnings
 
 
-def radial_binning(fs: np.ndarray, ss: np.ndarray, rs: np.ndarray, N=1000) -> np.ndarray:
+def radial_binning(fs: np.ndarray, ss: np.ndarray, rs: np.ndarray, N=500) -> np.ndarray:
     """
     Returns binned by radius table
 
@@ -28,14 +29,16 @@ def radial_binning(fs: np.ndarray, ss: np.ndarray, rs: np.ndarray, N=1000) -> np
     rmin, rmax = rs.min(), rs.max()
     step = (rmax - rmin) / N
     answ = []
-    for rcur, _ in enumerate(np.linspace(rmin, rmax, N)):
+    for rcur, _ in tqdm(enumerate(np.linspace(rmin, rmax, N)), desc='Binning values'):
         mask = (rs < rcur + step) & (rs >= rcur)
-        rmean = rs[mask].mean()
-        num = mask.sum()
-        fsmean = fs[mask].mean()
-        ssmean = ss[mask].mean()
-        answ.append([rmean, num, fsmean, ssmean])
-    return np.array(answ)
+        if sum(mask) > 0:
+            rmean = rs[mask].mean()
+            num = mask.sum()
+            fsmean = fs[mask].mean()
+            ssmean = ss[mask].mean()
+            answ.append([rmean, num, fsmean, ssmean])
+    answ = np.array(answ)
+    return answ
 
 
 def ang(v1, v2):
@@ -158,5 +161,6 @@ def main(args: List[str]):
 
 
 if __name__ == "__main__":
-    # rmean, num, fsmean, ssmean = main(sys.argv[1:]).T
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
     points = main(sys.argv[1:])
