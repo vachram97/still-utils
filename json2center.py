@@ -11,7 +11,40 @@ import matplotlib.pyplot as plt
 import warnings
 
 
-def radial_binning(fs: np.ndarray, ss: np.ndarray, rs: np.ndarray, N=500) -> np.ndarray:
+def moving_average(arr: np.ndarray, window_size: int) -> np.ndarray:
+    """
+    Return moving average of 1D array in numpy
+    
+    Arguments:
+        arr {np.ndarray} -- input array
+        window_size {int} -- window size
+    
+    Returns:
+        ret {np.ndarray} -- smoothened array
+    """
+    ret = np.cumsum(arr, dtype=float)
+    ret[window_size:] = ret[window_size:] - ret[:-window_size]
+    return ret[window_size - 1:] / window_size
+
+
+def rms_mask(arr: np.ndarray, window_size: int, percentile=0.1) -> np.ndarray:
+    """
+    Return mask where arr's deviation is smaller than it's mean*percentile:
+    RMSD[arr]_window_size < MEAN[arr]*percentile
+    
+    Arguments:
+        arr {np.ndarray} -- input array
+        window_size {int} -- window size
+    
+    Returns:
+        np.ndarray -- boolean mask
+    """
+    arr_mean = moving_average(arr, window_size)
+    arr_rmsd = np.power(moving_average(np.power(arr, 2), window_size), 0.5)
+    return np.where(np.abs(arr_rmsd) < np.abs(arr_mean)*percentile)
+
+
+def radial_binning(fs: np.ndarray, ss: np.ndarray, rs: np.ndarray, N=1000) -> np.ndarray:
     """
     Returns binned by radius table
 
@@ -29,7 +62,7 @@ def radial_binning(fs: np.ndarray, ss: np.ndarray, rs: np.ndarray, N=500) -> np.
     rmin, rmax = rs.min(), rs.max()
     step = (rmax - rmin) / N
     answ = []
-    for rcur, _ in tqdm(enumerate(np.linspace(rmin, rmax, N)), desc='Binning values'):
+    for rcur, _ in tqdm(enumerate(np.linspace(rmin, rmax, N)), desc='Binning values', total=N):
         mask = (rs < rcur + step) & (rs >= rcur)
         if sum(mask) > 0:
             rmean = rs[mask].mean()
