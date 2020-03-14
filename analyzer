@@ -475,7 +475,7 @@ for method in "${METHODS[@]}"; do
 	echo -e "$ratio" "\t" "$tmp" "\t" "$method"
 done
 
-pythonstring='from __future__ import print_function; print(*[i.split("-i")[1].split()[0] for i in open("'$INPUT'").readlines() if "indexamajig" in i],sep="\n")'
+pythonstring='from __future__ import print_function; print(*[i.split("-i")[1].split()[0] for i in open("'$INPUT'", mode="r") if "indexamajig" in i],sep="\n")'
 NIMAGES_INPUT=$(python -c "$pythonstring" | xargs wc -l 2> /dev/null | tail -1 | awk '{print $1}') 
 if [[ "$NIMAGES_INPUT" -eq 0 ]]; then
 	NIMAGES_INPUT="n/a (file lists not available)"; fi 
