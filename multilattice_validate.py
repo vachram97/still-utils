@@ -55,51 +55,52 @@ def read_stream(filename: str, print_multiples=None) -> Dict:
     database = {}
     list_of_multiples_to_print = []
 
-    for line_num, line in tqdm(enumerate(open(filename)), "Reading stream"):
-        if begin_chunk(line) or begin_crystal(line) or end_crystal(line):
-            active = True
-        if not active:
-            continue
-        else:
-            if image_filename(line):
-                current_filename = line.split()[-1]
-            elif event(line):
-                current_event = line.split()[-1]
-            elif peaksfromlist(line):
-                active = False
+    with open(filename, "r") as fin:
+        for line_num, line in tqdm(enumerate(fin), desc="Reading stream"):
+            if begin_chunk(line) or begin_crystal(line) or end_crystal(line):
+                active = True
+            if not active:
                 continue
-            elif has_cellparams(line):
-                current_cell_params = cell_params(line)
-            elif has_inverse(line):
-                if line.startswith("astar"):
-                    astar = cell_params(line)
-                elif line.startswith("bstar"):
-                    bstar = cell_params(line)
-                elif line.startswith("cstar"):
-                    cstar = cell_params(line)
+            else:
+                if image_filename(line):
+                    current_filename = line.split()[-1]
+                elif event(line):
+                    current_event = line.split()[-1]
+                elif peaksfromlist(line):
                     active = False
-                else:
-                    raise TypeError(
-                        f"Please check line {line}, num {line_num} -- it matches inverse param regex, but can not be parsed"
+                    continue
+                elif has_cellparams(line):
+                    current_cell_params = cell_params(line)
+                elif has_inverse(line):
+                    if line.startswith("astar"):
+                        astar = cell_params(line)
+                    elif line.startswith("bstar"):
+                        bstar = cell_params(line)
+                    elif line.startswith("cstar"):
+                        cstar = cell_params(line)
+                        active = False
+                    else:
+                        raise TypeError(
+                            f"Please check line {line}, num {line_num} -- it matches inverse param regex, but can not be parsed"
+                        )
+                elif end_crystal(line):
+                    current_chunk_crystals.append(
+                        (np.array([astar, bstar, cstar]), current_cell_params)
                     )
-            elif end_crystal(line):
-                current_chunk_crystals.append(
-                    (np.array([astar, bstar, cstar]), current_cell_params)
-                )
-                continue
-            elif end_chunk(line):
-                active = False
-                if len(current_chunk_crystals) > 0:
-                    image_id = (
-                        f"{current_filename} {current_event}"
-                        if current_event is not None
-                        else current_filename
-                    )
-                    database[image_id] = current_chunk_crystals
-                if print_multiples is not None and len(current_chunk_crystals) > 1:
-                    list_of_multiples_to_print.append(image_id)
-                current_chunk_crystals = []
-                continue
+                    continue
+                elif end_chunk(line):
+                    active = False
+                    if len(current_chunk_crystals) > 0:
+                        image_id = (
+                            f"{current_filename} {current_event}"
+                            if current_event is not None
+                            else current_filename
+                        )
+                        database[image_id] = current_chunk_crystals
+                    if print_multiples is not None and len(current_chunk_crystals) > 1:
+                        list_of_multiples_to_print.append(image_id)
+                    current_chunk_crystals = []
+                    continue
 
     if print_multiples is not None and len(list_of_multiples_to_print) > 0:
         with open(print_multiples, "w") as fout:
