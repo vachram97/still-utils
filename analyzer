@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# TODO: add running with exec and log forwarding, for automatic logging
+# Example here: https://github.com/marinegor/still-utils/blob/master/peaks2json.py
+
 HELP_STRING="\
 This is a wrapper script for CrystFEL-based processing of SFX data, written by Egor Marin @marinegor.
 Please contact me via marin@phystech.edu or github, if you know any issue.
@@ -13,17 +16,13 @@ process_hkl, partialator, compare_hkl, etc.
 ------
 Usage:
 ------
-	./analyzer -i output.stream \\
-		--merging process_hkl \\
-		--lowres 30.0 --highres 3.0 -y 222 --pushres 2.5
+	./analyzer -i output.stream --merging process_hkl --lowres 30.0 --highres 3.0 -y mmm --pushres 2.5
 
 		Provides you with output.stream indexing stats 
 		and performs merging with process_hkl
-		Writes output to lysozyme.{hkl,hkl1,hkl2}.
 
 
-	./analyzer -i lysozyme --rate \\
-		--highres 2.5 --lowres 20.0 --cell lyz_v2.cell
+	./analyzer -i lysozyme --rate --highres 2.5 -y mmm --lowres 20.0 --cell lyz_v2.cell
 
 		Runs compare_hkl on previously generated hkl files
 		with different unit cell file and resolution cutoffs
