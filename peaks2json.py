@@ -22,12 +22,14 @@ import subprocess
 from typing import List, Dict, Tuple
 
 
-def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
+def parse_stream(filename: str, threshold: float, debug: bool) -> Tuple[Dict, Dict]:
     """
     Parses stream and returns all indexed and located by peakfinder8 peak positions
 
     Arguments:
         filename {str} -- input stream filename
+        debug {bool} -- whether to print debug information or not
+        threshold {float} -- threshold intensity value for writing reflections to json
 
     Returns:
         Dict -- dictionary containing all peak positions from crystals. Format is {('image_filename','event'):(panel,fs,ss)}
@@ -67,6 +69,8 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
         current_event = None  # to handle non-event streams
         current_serial_number = None
         corrupted_chunk = False
+        chunk_peak_number = 0
+        crystal_peak_number = 0
 
         total_number_of_lines = subprocess.check_output(f"wc -l {filename}", shell=True)
         total_number_of_lines = int(total_number_of_lines.decode().split()[0])
@@ -77,72 +81,82 @@ def parse_stream(filename: str, debug: bool) -> Tuple[Dict, Dict]:
             bar_format="{l_bar}{bar}{r_bar}",
             total=total_number_of_lines,
         ):
-            try:
-                if corrupted_chunk:
-                    if "Begin chunk" not in line:
-                        continue
-                    else:
-                        is_crystal, is_chunk = False, False
-                        corrupted_chunk = False
-                        continue
-                if contains_filename(line):
-                    current_filename = line.split()[-1]
-                elif contains_event(line):
-                    current_event = line.split()[-1][2:]
-                elif contains_serial_number(line):
-                    current_serial_number = line.split()[-1]
-                elif starts_chunk_peaks(line):
-                    # image_id = (
-                    # (current_filename, current_event, current_serial_number)
-                    # if current_event is not None
-                    # else (current_filename, current_serial_number)
-                    # )
-                    is_chunk = True
-                    continue
+            # analyzing what we have
+            if ends_chunk_peaks(line):
+                is_chunk = False
+                chunk_peak_number = 0
+            elif ends_crystal_peaks(line):
+                is_crystal = False
+                crystal_peak_number = 0
 
-                elif ends_chunk_peaks(line):
-                    is_chunk = False
+            elif is_chunk:
+                #   fs/px   ss/px (1/d)/nm^-1   Intensity  Panel
+                #  598.00  473.50       2.39      331.89   p0
+                fs, ss, _, intensity_chunk, panel = [i for i in line.split()]
+                chunk_peak_number += 1
+                if float(intensity_chunk) >= threshold:
                     if current_event is not None:
                         answ_chunks[
-                            (current_filename, current_event, current_serial_number)
-                        ] = {"fs": float(fs), "ss": float(ss), "panel": panel}
-                    else:
-                        answ_chunks[(current_filename, current_serial_number)] = {
+                            (current_filename, current_event, current_serial_number, str(chunk_peak_number))
+                        ] = {
                             "fs": float(fs),
                             "ss": float(ss),
+                            "I": float(intensity_chunk),
                             "panel": panel,
                         }
-
-                elif starts_crystal_peaks(line):
-                    is_crystal = True
-                    continue
-                elif ends_crystal_peaks(line):
-                    is_crystal = False
+                    else:
+                        answ_chunks[(current_filename, current_serial_number, str(chunk_peak_number))] = {
+                            "fs": float(fs),
+                            "ss": float(ss),
+                            "I": float(intensity_chunk),
+                            "panel": panel,
+                        }
+            elif is_crystal:
+                #    h    k    l          I   sigma(I)       peak background  fs/px  ss/px panel
+                #  -63   41    9     -41.31      57.45     195.00     170.86  731.0 1350.4 p0
+                crystal_peak_number += 1
+                _, _, _, intensity_crystal, _, _, _, fs, ss, panel = [
+                    i for i in line.split()
+                ]
+                if float(intensity_crystal) >= threshold:
                     if current_event is not None:
                         answ_crystals[
-                            (current_filename, current_event, current_serial_number)
-                        ] = {"fs": float(fs), "ss": float(ss), "panel": panel}
-                    else:
-                        answ_crystals[(current_filename, current_serial_number)] = {
+                            (current_filename, current_event, current_serial_number, str(crystal_peak_number))
+                        ] = {
                             "fs": float(fs),
                             "ss": float(ss),
+                            "I": float(intensity_crystal),
+                            "panel": panel,
+                        }
+                    else:
+                        answ_crystals[(current_filename, current_serial_number, str(crystal_peak_number))] = {
+                            "fs": float(fs),
+                            "ss": float(ss),
+                            "I": float(intensity_crystal),
                             "panel": panel,
                         }
 
-            except Exception as e:
-                print(f"    Caught {e} on current line: {line}", end="", file=stderr)
-                corrupted_chunk = True
+            # start analyzing where we are now
+            if corrupted_chunk:
+                if "Begin chunk" not in line:
+                    continue
+                else:
+                    is_crystal, is_chunk = False, False
+                    corrupted_chunk = False
+                    continue
+            if contains_filename(line):
+                current_filename = line.split()[-1]
+            elif contains_event(line):
+                current_event = line.split()[-1][2:]
+            elif contains_serial_number(line):
+                current_serial_number = line.split()[-1]
+
+            elif starts_chunk_peaks(line):
+                is_chunk = True
                 continue
 
-            # analyzing what we've got
-            try:
-                if is_chunk:
-                    fs, ss, _, _, panel = [i for i in line.split()]
-                elif is_crystal:
-                    _, _, _, _, _, _, _, fs, ss, panel = [i for i in line.split()]
-            except Exception as e:
-                print(f"    Caught {e} on current line: {line}", end="", file=stderr)
-                corrupted_chunk = True
+            elif starts_crystal_peaks(line):
+                is_crystal = True
                 continue
 
     return answ_chunks, answ_crystals
@@ -169,9 +183,17 @@ def main(args: List[str]):
     parser.add_argument(
         "--debug", help="Don't supress lines with errors", default=False
     )
+    parser.add_argument(
+        "--threshold",
+        help="Intensity threshold for peak writing",
+        type=float,
+        default=float("-inf"),
+    )
 
     args = parser.parse_args()
-    chunks, crystals = parse_stream(args.stream, debug=args.debug)
+    chunks, crystals = parse_stream(
+        args.stream, threshold=args.threshold, debug=args.debug
+    )
 
     if args.chunks:
         out_filename = f"{args.stream}_chunks.json"
