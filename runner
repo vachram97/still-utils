@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# TODO: merge with turbo-index-slurm
+# TODO: create folders on first run
+# TODO: add help
+
+time=$(date "+%Y_%m_%d_%H_%M")
+
+# GENERAL PARAMETERS
+PROJECT_NAME="GPCR"
+NPROC="32"
+SLURM="1"
+
+# PEAK FINDING PARAMETERS
+SNR='3.0'
+THRESHOLD='10'
+HIGHRES='2.2'
+SHUFFLE='1'
+PEAKS="peakfinder8"
+INDEXING="mosflm,dirax,xds"
+
+GEOM="YOUR_GEOMETRY.geom"
+CELL="YOUR_CELL.cell"
+
+# Essential folders
+STREAMDIR="${PWD}/streams"; mkdir "${STREAMDIR}" &> /dev/null
+LOGDIR="${PWD}/logs"; mkdir "${LOGDIR}" &> /dev/null
+SHDIR="${PWD}/.sh_slurm"; mkdir "${SHDIR}" &> /dev/null
+
+
+# Shuffling the stream
+LST='YOUR_INPUT.lst' # your input list
+shuf "$LST" > input.lst # your list must have events to enable this
+if [[ "$SHUFFLE" == '1' ]]; then
+	LST="input.lst";
+fi
+
+
+BASEEXECSTRING="indexamajig \
+-g ${GEOM} \
+-p ${CELL} \
+-j ${NPROC} \
+--min-snr=${SNR} \
+--threshold=${THRESHOLD}"
+
+
+if [[ "${SLURM}" == "1" ]]; then
+	# SLURM queueing here
+	...
+else
+	# linking the laststream
+	ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
+	EXECSTRING="${BASEEXECSTRING} -o ${STREAMDIR}/${PROJECT_NAME}_${time}.stream -i ${LST}"
+	EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
+	exec "${EXECSTRING}" |& tee "log.indexamajig_${time}"
+fi
