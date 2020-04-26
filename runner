@@ -7,20 +7,22 @@ time=$(date "+%Y_%m_%d_%H_%M")
 
 # GENERAL PARAMETERS
 PROJECT_NAME="GPCR"
-NPROC="32"  # for slurm, `nproc` will be used
-SLURM="1"
+NPROC="16"  # for slurm, `nproc` will be used
+SLURM="0"
 
 # PEAK FINDING PARAMETERS
-SNR='3.0'
-THRESHOLD='10'
-HIGHRES='2.2'
+SNR='4.0'
+THRESHOLD='30'
+HIGHRES='2.5'
 SHUFFLE='1'
 PEAKS="peakfinder8"
-INDEXING="mosflm,dirax,xds"
+INDEXING="xgandalf"
+MINPEAKS="15"
+OTHERPARAMS="--multi --integration=rings-grad"
 
-GEOM="YOUR_GEOMETRY.geom"
-CELL="YOUR_CELL.cell"
-LST='YOUR_INPUT.lst' # your input list
+GEOM="YOURGEOM.geom"
+CELL="YOURCELL.cell"
+LST='YOURLIST.lst' # your input list
 
 # SLURM parameters
 # put full SLURM header here
@@ -45,7 +47,9 @@ BASEEXECSTRING="indexamajig \
 --min-snr=${SNR} \
 --threshold=${THRESHOLD} \
 --highres=${HIGHRES} \
---temp-dir=${LOGDIR}"
+--temp-dir=${LOGDIR} \
+--min-peaks=${MINPEAKS} \
+${OTHERPARAMS}"
 
 
 if [[ "${SLURM}" == "1" ]]; then
@@ -65,6 +69,7 @@ else
 	ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
 	EXECSTRING="${BASEEXECSTRING} -o ${STREAMDIR}/${PROJECT_NAME}_${time}.stream -i ${LST}"
 	EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
-	EXECSTRING="${EXECSTRING} --nproc=${NPROC}"
-	exec "${EXECSTRING}" |& tee "${LOGDIR}/log.indexamajig_${time}"
+	EXECSTRING="${EXECSTRING} -j ${NPROC}"
+	echo "$EXECSTRING"  
+	eval "${EXECSTRING}" |& tee "${LOGDIR}/log.indexamajig_${time}"
 fi
