@@ -27,8 +27,15 @@ GEOM="YOURGEOM.geom"
 CELL="YOURCELL.cell"
 LST='test.lst' # your input list
 
+# check if path is absolute, if not -- make it
+if ! [[ ${GEOM::1} == "/" ]]; then GEOM="${PWD}/${GEOM}"; fi
+if ! [[ ${CELL::1} == "/" ]]; then CELL="${PWD}/${CELL}"; fi
+if ! [[ ${LST::1} == "/" ]]; then LST="${PWD}/${LST}"; fi
+
 # SLURM parameters
-# put full SLURM header here
+SLURM_HEADER_FILE="slurm.header"
+SLURM_SETUP="module load apps/crystfel-0.8.0"
+
 
 # Essential folders
 LOGDIR="${PWD}/logs"; mkdir "${LOGDIR}" &> /dev/null
@@ -73,15 +80,34 @@ if [[ "${SLURM}" == "1" ]]; then
 			--lines=${SLURMLINES} \
 			"${LST}" "${CURRENT_LOGDIR}/list_"
 	fi
-	# In loop:
-		# update BASEEXECSTRING with 
-			# - job name
-			# - input list
-			# - sh script with slurm header
-			# - add "cat"-ing a stream to general output stream
-			# - compress stream
-			# - output stream name
-		# submit job to slurm
+
+	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
+		dummy="$(basename "${current_lst}" .lst)"
+		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in split above
+		current_stream=${CURRENT_LOGDIR}/stream_${current_idx}.stream
+		current_worker=${CURRENT_LOGDIR}/worker_${current_idx}.sh
+		cat ${SLURM_HEADER_FILE} >> "${current_worker}"
+
+		echo "#SBATCH --chdir ${CURRENT_LOGDIR}" >> "${current_worker}" >> ${current_worker}
+		echo "#SBATCH --job-name ${PROJECT_NAME}-${current_idx}" >> ${current_worker}
+		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_${current_idx}.log" >> ${current_worker}
+		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${current_idx}.log" >> ${current_worker}
+		echo >> "${current_worker}"
+
+		echo "${SLURM_SETUP}" >> "${current_worker}"
+
+		# now writing the execution string itself
+
+		EXECSTRING="${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
+		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
+		EXECSTRING="${EXECSTRING} -j \`nproc\`"  # this will use the `nproc` value on host machine
+		echo "$EXECSTRING" >> ${current_worker}
+		#TODO - add "cat"-ing a stream to general output stream
+		#TODO - compress stream
+		#TODO - output stream name
+		sbatch ${current_worker}
+	done
+
 else
 	# linking the laststream
 	ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
