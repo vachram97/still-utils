@@ -8,11 +8,13 @@
 *.pdb
 *.stream.*.json
 *.header
+*.lock
 
 # Standard processing folders
 streams
 logs
 images
+test
 
 # Python stuff
 __pycache__
