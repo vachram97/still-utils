@@ -1,14 +1,13 @@
 #!/bin/bash
 
 # TODO: merge with turbo-index-slurm
-# TODO: create folders on first run
 # TODO: add help
 
 time=$(date "+%Y_%m_%d_%H_%M")
 
 # GENERAL PARAMETERS
 PROJECT_NAME="GPCR"
-NPROC="32"
+NPROC="32"  # for slurm, `nproc` will be used
 SLURM="1"
 
 # PEAK FINDING PARAMETERS
@@ -21,6 +20,10 @@ INDEXING="mosflm,dirax,xds"
 
 GEOM="YOUR_GEOMETRY.geom"
 CELL="YOUR_CELL.cell"
+LST='YOUR_INPUT.lst' # your input list
+
+# SLURM parameters
+# put full SLURM header here
 
 # Essential folders
 STREAMDIR="${PWD}/streams"; mkdir "${STREAMDIR}" &> /dev/null
@@ -29,28 +32,39 @@ SHDIR="${PWD}/.sh_slurm"; mkdir "${SHDIR}" &> /dev/null
 
 
 # Shuffling the stream
-LST='YOUR_INPUT.lst' # your input list
 shuf "$LST" > input.lst # your list must have events to enable this
 if [[ "$SHUFFLE" == '1' ]]; then
 	LST="input.lst";
 fi
 
 
+# Start building the indexamajig command
 BASEEXECSTRING="indexamajig \
 -g ${GEOM} \
 -p ${CELL} \
--j ${NPROC} \
 --min-snr=${SNR} \
---threshold=${THRESHOLD}"
+--threshold=${THRESHOLD} \
+--highres=${HIGHRES} \
+--temp-dir=${LOGDIR}"
 
 
 if [[ "${SLURM}" == "1" ]]; then
-	# SLURM queueing here
+	# Divide initial list into separate lists for each job
 	...
+	# In loop:
+		# update BASEEXECSTRING with 
+			# - job name
+			# - input list
+			# - sh script with slurm header
+			# - add "cat"-ing a stream to general output stream
+			# - compress stream
+			# - output stream name
+		# submit job to slurm
 else
 	# linking the laststream
 	ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
 	EXECSTRING="${BASEEXECSTRING} -o ${STREAMDIR}/${PROJECT_NAME}_${time}.stream -i ${LST}"
 	EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
-	exec "${EXECSTRING}" |& tee "log.indexamajig_${time}"
+	EXECSTRING="${EXECSTRING} --nproc=${NPROC}"
+	exec "${EXECSTRING}" |& tee "${LOGDIR}/log.indexamajig_${time}"
 fi
