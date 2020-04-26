@@ -319,7 +319,7 @@ if ! [[ ${LOWRES} =~ $is_float_positive ]]; then
 	echo -e "\e[31mError:\e[0m LOWRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
 if ! [[ ${HIGHRES} =~ $is_float_positive ]]; then
 	echo -e "\e[31mError:\e[0m HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"; exit 1; fi
-if (( $(echo "${HIGHRES} >= ${LOWRES}" |bc -l) )); then
+if [[ $(python -c "print(${HIGHRES}>=${LOWRES})") == "True" ]]; then
 	echo -e "\e[31mError:\e[0m HIGHRES >= LOWRES"; exit 1; fi
 
 # check validity of PUSHRES
@@ -354,7 +354,7 @@ if [[ ${MULTI_RMSD} == "" ]]; then
 	echo -e "\e[33mWarning:\e[0m will use default MULTI_RMSD=5.0 degrees"; MULTI_RMSD=5.0; fi
 if ! [[ ${MULTI_RMSD} =~ $is_float_positive ]]; then
 	echo -e "\e[31mError:\e[0m MULTI_RMSD should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
-if (( $(echo "${MULTI_RMSD} > 30.0" |bc -l) )); then
+if [[ $(python -c "print(${MULTI_RMSD}>30)") == "True" ]]; then
 	echo -e "\e[33mWarning:\e[0m are you sure you want your MULTI_RMSDs be that large? It may give unreasonably high false multiples number"; fi
 
 # check validity of MIN_CC
@@ -364,7 +364,7 @@ if [[ ${MIN_CC} == "" ]]; then
 if ! [[ ${MIN_CC} =~ $is_float ]]; then
 	echo "$MIN_CC"
 	echo -e "\e[31mError:\e[0m MIN_CC should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
-if (( $(echo "${MIN_CC} > 1.0" |bc -l) )) || (( $(echo "${MIN_CC} < -1.0" |bc -l) )); then
+if [[ $(python -c "print(${MIN_CC}>1.0)") == "True" ]] || [[ $(python -c "print(${MIN_CC}<-1.0)") == "True" ]]; then
 	echo -e "\e[31mError:\e[0m |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"; exit 1; fi
 
 # check validity of MODEL
@@ -474,7 +474,7 @@ for method in "${METHODS[@]}"; do
 
 	tmp="$(grep -E -c -a -w "$method" "$INPUT")"	
 	let "NINDEXED=$NINDEXED+$tmp"
-	ratio=$(echo " scale=3; $tmp/$NIMAGES" | bc)
+	ratio=$(python -c "print(round(${tmp}/${NIMAGES},3))")
 	echo -e "$ratio" "\t" "$tmp" "\t" "$method"
 done
 
