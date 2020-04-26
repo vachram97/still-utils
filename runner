@@ -3,12 +3,15 @@
 # TODO: merge with turbo-index-slurm
 # TODO: add help
 
-time=$(date "+%Y_%m_%d_%H_%M")
+time=$(date "+%Y_%m_%d_%H_%M_%S")
 
 # GENERAL PARAMETERS
 PROJECT_NAME="GPCR"
 NPROC="16"  # for slurm, `nproc` will be used
-SLURM="0"
+
+SLURM="1"
+SLURMLINES="2000"  # it's more efficient to run more jobs than machines available
+SLURMJOBS="3"  # will back up the SLURMLINES to make sure at least all machines are being used
 
 # PEAK FINDING PARAMETERS
 SNR='4.0'
@@ -22,20 +25,22 @@ OTHERPARAMS="--multi --integration=rings-grad"
 
 GEOM="YOURGEOM.geom"
 CELL="YOURCELL.cell"
-LST='YOURLIST.lst' # your input list
+LST='test.lst' # your input list
 
 # SLURM parameters
 # put full SLURM header here
 
 # Essential folders
-STREAMDIR="${PWD}/streams"; mkdir "${STREAMDIR}" &> /dev/null
 LOGDIR="${PWD}/logs"; mkdir "${LOGDIR}" &> /dev/null
-SHDIR="${PWD}/.sh_slurm"; mkdir "${SHDIR}" &> /dev/null
+STREAMDIR="${PWD}/streams"; mkdir "${STREAMDIR}" &> /dev/null
+
+CURRENT_LOGDIR="${LOGDIR}/${PROJECT_NAME}_${time}"
+mkdir -p "${CURRENT_LOGDIR}" 2>/dev/null || exit 1;
 
 
 # Shuffling the stream
-shuf "$LST" > input.lst # your list must have events to enable this
 if [[ "$SHUFFLE" == '1' ]]; then
+	shuf "$LST" > input.lst # your list must have events to enable this
 	LST="input.lst";
 fi
 
@@ -47,14 +52,27 @@ BASEEXECSTRING="indexamajig \
 --min-snr=${SNR} \
 --threshold=${THRESHOLD} \
 --highres=${HIGHRES} \
---temp-dir=${LOGDIR} \
+--temp-dir=${CURRENT_LOGDIR} \
 --min-peaks=${MINPEAKS} \
 ${OTHERPARAMS}"
 
 
 if [[ "${SLURM}" == "1" ]]; then
 	# Divide initial list into separate lists for each job
-	...
+	NLINES_INPUT="$(wc -l ${LST})"
+	if [[ "${NLINES_INPUT}" < "${SLURMLINES}" ]]; then
+		split --numeric-suffixes=1 \
+			--additional-suffix=".lst" \
+			--suffix-length=4 \
+			--number=l/${SLURMJOBS} \
+			"${LST}" "${CURRENT_LOGDIR}/list_"
+	else
+		split --numeric-suffixes=1 \
+			--additional-suffix=".lst" \
+			--suffix-length=4 \
+			--lines=${SLURMLINES} \
+			"${LST}" "${CURRENT_LOGDIR}/list_"
+	fi
 	# In loop:
 		# update BASEEXECSTRING with 
 			# - job name
