@@ -2,6 +2,7 @@
 
 # TODO: add running with exec and log forwarding, for automatic logging
 # Example here: https://github.com/marinegor/still-utils/blob/master/peaks2json.py
+# TODO: add per-run percent of indexed images
 
 HELP_STRING="\
 This is a wrapper script for CrystFEL-based processing of SFX data, written by Egor Marin @marinegor.
