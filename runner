@@ -42,7 +42,7 @@ LOGDIR="${PWD}/logs"; mkdir "${LOGDIR}" &> /dev/null
 STREAMDIR="${PWD}/streams"; mkdir "${STREAMDIR}" &> /dev/null
 
 CURRENT_LOGDIR="${LOGDIR}/${PROJECT_NAME}_${time}"
-mkdir -p "${CURRENT_LOGDIR}" 2>/dev/null || exit 1;
+mkdir -p "${CURRENT_LOGDIR}/indexer-logs" 2>/dev/null || exit 1;
 
 
 # Shuffling the stream
@@ -59,7 +59,7 @@ BASEEXECSTRING="indexamajig \
 --min-snr=${SNR} \
 --threshold=${THRESHOLD} \
 --highres=${HIGHRES} \
---temp-dir=${CURRENT_LOGDIR} \
+--temp-dir=${CURRENT_LOGDIR}/indexer-logs \
 --min-peaks=${MINPEAKS} \
 ${OTHERPARAMS}"
 
