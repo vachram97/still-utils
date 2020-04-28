@@ -1,6 +1,17 @@
 #!/bin/bash
 
-# TODO: add help
+HELP_STRING="\
+Usage: runner input.yaml
+
+See full documentation here: https://github.com/marinegor/still-utils
+Or email marin@phystech.edu"
+
+# reading input
+if [ "$1" == "-h" ]; then
+  echo "Usage: $(basename "$0") ${HELP_STRING}"
+  exit 0
+fi
+
 
 # with courtesy to amazing @jasperes: https://github.com/jasperes/bash-yaml
 #--------------------------------------------------------------------------
