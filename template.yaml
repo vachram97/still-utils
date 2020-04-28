@@ -1,0 +1,23 @@
+# PROJECT PARAMETERS
+PROJECT_NAME: GPCR
+NPROC: 16
+
+# INPUT FILES
+GEOM: initial.geom
+CELL: initial.cell
+LST: full.lst
+
+# SLURM parameters
+SLURM: 1
+SLURMLINES: 2000
+SLURMJOBS: 3
+
+# PEAK FINDING PARAMETERS
+SNR: 4.0
+THRESHOLD: 30
+HIGHRES: 2.5
+SHUFFLE: 1
+PEAKS: peakfinder8
+INDEXING: xgandalf
+MINPEAKS: 15
+OTHERPARAMS: --multi --integration=rungs-grad --no-non-hits-in-stream
