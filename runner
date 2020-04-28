@@ -3,28 +3,10 @@
 # TODO: add help
 
 time=$(date "+%Y_%m_%d_%H_%M_%S")
+if ! source "$(which bash_yaml.sh)" &> /dev/null; then 
+	echo "Please make sure bash_yaml.sh is in your PATH"; exit 1; fi
 
-# GENERAL PARAMETERS
-PROJECT_NAME="GPCR"
-NPROC="16"  # for slurm, `nproc` will be used
-
-SLURM="1"
-SLURMLINES="2000"  # it's more efficient to run more jobs than machines available
-SLURMJOBS="3"  # will back up the SLURMLINES to make sure at least all machines are being used
-
-# PEAK FINDING PARAMETERS
-SNR='4.0'
-THRESHOLD='30'
-HIGHRES='2.5'
-SHUFFLE='1'
-PEAKS="peakfinder8"
-INDEXING="xgandalf"
-MINPEAKS="15"
-OTHERPARAMS="--multi --integration=rings-grad"
-
-GEOM="YOURGEOM.geom"
-CELL="YOURCELL.cell"
-LST='test.lst' # your input list
+create_variables "$1"
 
 # check if path is absolute, if not -- make it
 if ! [[ ${GEOM::1} == "/" ]]; then GEOM="${PWD}/${GEOM}"; fi
