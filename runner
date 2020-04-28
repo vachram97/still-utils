@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# TODO: merge with turbo-index-slurm
 # TODO: add help
 
 time=$(date "+%Y_%m_%d_%H_%M_%S")
@@ -101,11 +100,12 @@ if [[ "${SLURM}" == "1" ]]; then
 		EXECSTRING="${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
 		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 		EXECSTRING="${EXECSTRING} -j \`nproc\`"  # this will use the `nproc` value on host machine
-		echo "$EXECSTRING" >> ${current_worker}
-		#TODO - add "cat"-ing a stream to general output stream
-		#TODO - compress stream
-		#TODO - output stream name
-		sbatch ${current_worker}
+		echo "$EXECSTRING" >> "${current_worker}"
+
+		echo "cat ${current_stream} | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream"
+		echo "tar xzvf ${current_stream}.tar.gz ${current_stream}"
+
+		sbatch "${current_worker}"
 	done
 
 else
