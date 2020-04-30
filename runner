@@ -106,7 +106,8 @@ BASEEXECSTRING="indexamajig \
 --min-peaks=${MINPEAKS} \
 ${OTHERPARAMS}"
 
-
+touch "streams/${PROJECT_NAME}_${time}.stream"
+ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
 if [[ "${SLURM}" == "1" ]]; then
 	# Divide initial list into separate lists for each job
 	NLINES_INPUT="$(wc -l ${LST})"
@@ -139,22 +140,21 @@ if [[ "${SLURM}" == "1" ]]; then
 
 		echo "${SLURM_SETUP}" >> "${current_worker}"
 
-		# now writing the execution string itself
 
+		# now writing the execution string itself
 		EXECSTRING="${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
 		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 		EXECSTRING="${EXECSTRING} -j \`nproc\`"  # this will use the `nproc` value on host machine
 		echo "$EXECSTRING" >> "${current_worker}"
 
 		echo "cat ${current_stream} | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream" >> "${current_worker}"
-		echo "tar xzvf ${current_stream}.tar.gz ${current_stream}" >> "${current_worker}"
+		echo "tar zvf ${current_stream}.tar.gz ${current_stream}" >> "${current_worker}"
 
 		sbatch "${current_worker}"
 	done
 
 else
 	# linking the laststream
-	ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
 	EXECSTRING="${BASEEXECSTRING} -o ${STREAMDIR}/${PROJECT_NAME}_${time}.stream -i ${LST}"
 	EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 	EXECSTRING="${EXECSTRING} -j ${NPROC}"
