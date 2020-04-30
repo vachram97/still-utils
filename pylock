@@ -31,7 +31,7 @@ def main(args: List[str]):
     start = lambda s: args.start in s
     stop = lambda s: args.stop in s
 
-    lock = FileLock(f".{args.fout}.lock")
+    lock = FileLock(f"{args.fout}.lock")
     for line in args.stdin:
         if start(line):
             buffer = []

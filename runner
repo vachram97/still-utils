@@ -148,7 +148,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		echo "$EXECSTRING" >> "${current_worker}"
 
 		echo "cat ${current_stream} | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream" >> "${current_worker}"
-		echo "tar zvf ${current_stream}.tar.gz ${current_stream}" >> "${current_worker}"
+		echo "tar fcz ${current_stream}.tar.gz ${current_stream} --absolute-names" >> "${current_worker}"
 
 		sbatch "${current_worker}"
 	done
