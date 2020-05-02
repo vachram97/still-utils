@@ -86,7 +86,7 @@ def extract_hits(
         size_return {int} -- will return (2*size_return-1)**2 sized square with peak in center
 
     Returns:
-        Dict -- dictionary of f'{image_filename|event : {'x':x, 'y':y, 'profile':np.ndarray}}
+        Dict -- dictionary of f'{image_filename|event : {'x':x, 'y':y, 'profile':list}}
     """
 
     hits = {}
@@ -105,13 +105,16 @@ def extract_hits(
             size = 2 * size_return + 1
             for (x, y), profile in tqdm(peaks.items()):
                 if profile.shape == (size, size):
-                    joined_key = "|".join(cxi_filename, str(idx))
-                    answ[joined_key] = {
-                        "x": x,
-                        "y": y,
-                        "profile": list(profile.flatten()),
+                    joined_key = "|".join([cxi_filename, str(idx)])
+                    single_peak = {
+                        "x": str(x),
+                        "y": str(y),
+                        "profile": [int(i) for i in profile.flatten()],
                     }
-                    # answ[(*current_key, x, y)] = list(profile.flatten())
+                    if joined_key in answ:
+                        answ[joined_key].append(single_peak)
+                    else:
+                        answ[joined_key] = [single_peak]
 
     return answ
 
@@ -148,21 +151,24 @@ def main(args):
         default=5,
         help="will return (2*size_return-1)**2 sized square with peak in center",
     )
-    parser.add_argument('--fout', type=str, help='Output file')
+    parser.add_argument("--fout", type=str, help="Output file")
     args = parser.parse_args()
 
     filenames = {}  # dict with {cxi_filename:{events_set}}
-    with open(f"{args.input_lst}", mode=r) as fin:
+    with open(f"{args.input_lst}", mode="r") as fin:
         for line in fin:
             filename, eventnum = line.split(r"//")
+            filename = filename.replace(" ", "")
             eventnum = int(eventnum)
+            #  print(filename, eventnum)
             if filename in filenames:
                 filenames[filename].add(eventnum)
             else:
-                filenames[filename] = {}
+                filenames[filename] = {eventnum}
 
     ret = {}
-    for filename, events_list in filenames.items():
+    for filename, events_list in tqdm(filenames.items()):
+        #  print(filename, events_list)
         current_peaks = extract_hits(
             cxi_filename=filename,
             indices=events_list,
@@ -172,7 +178,8 @@ def main(args):
         )
         ret.update(current_peaks)
 
-    with open(args.fout, mode='w'):
+    #  print(ret)
+    with open(args.fout, mode="w") as fout:
         json.dump(ret, fout, indent=4)
 
 
