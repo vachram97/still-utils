@@ -31,9 +31,23 @@ Since you now have `pip3`, just do:
 python3 -m pip3 install --user -r requirements.txt
 ```
 
+### Additional software
+In case you don't have CrystFEL installed, please either refer to its original [installation page](http://www.desy.de/~twhite/crystfel/install.html) or refer to [my other repo](https://github.com/marinegor/xtal-installers) with all crystallography installers.
+
+
 ### Configure your PATH variable
 Add this to your `~/.bashrc`
 ```bash
 export PATH="$PATH:~/github/still-utils"
 ```
 so that you won't have to type full path to the scripts every time.
+
+## User requirements
+If you don't know SSX/SFX data processing but really want to learn it, here is what I'd recommend:
+
+  - make sure you know how to operate command line (e.g. complete [The Unix Workbench](https://www.coursera.org/learn/unix))
+  - learn one text editor that works from command line directly. I strongly recommend `vim` by completing [vimtutor](https://linux.die.net/man/1/vimtutor). You can choose `nano` or `emacs`, however.
+  - make sure you've done wonderful [CrystFEL tutorial](http://www.desy.de/~twhite/crystfel/tutorial.html) by Thomas White
+  - read [CrystFEL's best practices](https://www.desy.de/~twhite/crystfel/bestpractice.html)
+  - read Thomas White's most recent [presentation]((https://www.desy.de/~twhite/crystfel/presentations/Gothenburg.pdf) on data processing
+  - and finally please read `man indexamajig` after you install CrystFEL.
