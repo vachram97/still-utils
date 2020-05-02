@@ -17,8 +17,6 @@ import os
 import re
 import numpy as np
 
-#  import matplotlib.pyplot as plt
-
 if sys.argv[1] == "-":
     f = sys.stdin
 else:
@@ -70,18 +68,6 @@ H = np.rot90(H)
 H = np.flipud(H)
 Hmasked = np.ma.masked_where(H == 0, H)
 
-# Plot 2D histogram using pcolor
-#  plt.ion()
-#  fig2 = plt.figure()
-#  plt.pcolormesh(xedges,yedges,Hmasked)
-#  plt.title('Detector shifts according to prediction refinement')
-#  plt.xlabel('x shift / mm')
-#  plt.ylabel('y shift / mm')
-#  plt.plot(0, 0, 'bH', color='c')
-#  fig = plt.gcf()
-#  cbar = plt.colorbar()
-#  cbar.ax.set_ylabel('Counts')
-#  plt.show()
 
 # Apply shifts to geometry
 if have_geom:
