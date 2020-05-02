@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+import argparse
+from itertools import chain, product
+from typing import Dict
+
+import json
 import h5py
 import numpy as np
 from tqdm import tqdm
-from itertools import chain, product
-import matplotlib.pyplot as plt
-from typing import Dict
+import sys
 
 
 def _peaks_from_ndarray(
@@ -102,6 +105,76 @@ def extract_hits(
             size = 2 * size_return + 1
             for (x, y), profile in tqdm(peaks.items()):
                 if profile.shape == (size, size):
-                    answ[(*current_key, x, y)] = list(profile.flatten())
+                    joined_key = "|".join(cxi_filename, str(idx))
+                    answ[joined_key] = {
+                        "x": x,
+                        "y": y,
+                        "profile": list(profile.flatten()),
+                    }
+                    # answ[(*current_key, x, y)] = list(profile.flatten())
 
     return answ
+
+
+def main(args):
+    """
+    The main function
+    """
+
+    parser = argparse.ArgumentParser(
+        description="Extracts peaks (=larger-than-their-neighbours pixels) from cxi file"
+    )
+
+    parser.add_argument(
+        "--cxi_path",
+        type=str,
+        default="entry_1/data_1/data",
+        help="path to actual data within a cxi filename",
+    )
+    parser.add_argument(
+        "input_lst",
+        type=str,
+        help="Input .lst filename, containing both filenames and event numbers",
+    )
+    parser.add_argument(
+        "--size_compare",
+        type=int,
+        default=1,
+        help="peaks should be larger or equal to all peaks within (-size,+size) square",
+    )
+    parser.add_argument(
+        "--size_return",
+        type=int,
+        default=5,
+        help="will return (2*size_return-1)**2 sized square with peak in center",
+    )
+    parser.add_argument('--fout', type=str, help='Output file')
+    args = parser.parse_args()
+
+    filenames = {}  # dict with {cxi_filename:{events_set}}
+    with open(f"{args.input_lst}", mode=r) as fin:
+        for line in fin:
+            filename, eventnum = line.split(r"//")
+            eventnum = int(eventnum)
+            if filename in filenames:
+                filenames[filename].add(eventnum)
+            else:
+                filenames[filename] = {}
+
+    ret = {}
+    for filename, events_list in filenames.items():
+        current_peaks = extract_hits(
+            cxi_filename=filename,
+            indices=events_list,
+            cxi_path=args.cxi_path,
+            size_compare=args.size_compare,
+            size_return=args.size_return,
+        )
+        ret.update(current_peaks)
+
+    with open(args.fout, mode='w'):
+        json.dump(ret, fout, indent=4)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
