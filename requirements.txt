@@ -1,0 +1,5 @@
+tqdm==4.19.5
+matplotlib==3.1.3
+numpy==1.18.1
+scipy==1.4.1
+rmsd==1.3.2
