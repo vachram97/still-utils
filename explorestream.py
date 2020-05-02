@@ -13,7 +13,7 @@ except IndexError:
 if input_stream == "-h" or input_stream == "--help":
     print("Usage: python explorestream.py output.stream")
 
-os.system("grep Cell %s > tmp/tmp.lst" % input_stream)
+os.system("grep Cell %s > tmp.lst" % input_stream)
 fin = [elem.split() for elem in open("tmp.lst").read().split("\n") if elem]
 
 a = [float(elem[2]) * 10 for elem in fin]
@@ -39,4 +39,4 @@ print("al= %.2f deg\trmsd = %.2f deg" % stats(al))
 print("be= %.2f deg\trmsd = %.2f deg" % stats(be))
 print("ga= %.2f deg\trmsd = %.2f deg" % stats(ga))
 
-os.system("rm tmp/tmp.lst")
+os.system("rm tmp.lst")
