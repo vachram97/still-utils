@@ -88,7 +88,7 @@ def update_yaml(in_yaml: str, geom_params: dict, inplace=True) -> str:
 
 
 def update_geom_params(
-    initial_dict,
+    initial_geom,
     alpha: np.float,
     beta: np.float,
     coffset: np.float,
@@ -112,6 +112,18 @@ def update_geom_params(
         dict -- updated dictioinary
     """
 
+    important_keys = ["fs", "ss", "corner_x", "corner_y", "coffset"]
+    initial_dict = {}
+    with open(initial_geom, "r") as fin:
+        for line in fin:
+            for key in important_keys:
+                if line[0] != ";" and line.replace(" ", "").split("=")[0].endswith(
+                    f"/{key}"
+                ):
+                    key, value = line[:-1].replace(" ", "").split("=")
+                    initial_dict[key] = value
+
+    print(initial_dict)
     alpha, beta = np.deg2rad(alpha), np.deg2rad(beta)
 
     def _find_proper_key(val: str):
@@ -120,7 +132,7 @@ def update_geom_params(
                 return key
 
     fs_key, ss_key, corner_x_key, corner_y_key, coffset_key = map(
-        _find_proper_key, ["fs", "ss", "corner_x", "corner_y", "coffset"]
+        _find_proper_key, important_keys
     )
 
     # p0/fs = -1.000000x +0.000000y
@@ -204,13 +216,12 @@ def main(args: List[str]):
         type=str,
         help='Range along beta (y-axis) angle, "-1.0 1.0" would be [-1,1] degree',
     )
-    parser.add_argument("--corner_x", type=str, help='Range for corner_x')
-    parser.add_argument("--corner_y", type=str, help='Range for corner_y')
+    parser.add_argument("--corner_x", type=str, help="Range for corner_x")
+    parser.add_argument("--corner_y", type=str, help="Range for corner_y")
     parser.add_argument("--coffset", type=str, help="Range for coffset")
     parser.add_argument("--ntrials", type=int, help="Number of trials for optimization")
 
-    args = parser.parse_args() 
-
+    args = parser.parse_args()
 
 
 if __name__ == "__main__":
