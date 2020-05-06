@@ -3,6 +3,7 @@
 import argparse
 import hyperopt
 import sys
+import os
 import subprocess
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -16,12 +17,9 @@ def run_crystfel(input_yaml_file: str) -> str:
 
     Arguments:
         input_yaml_file {str} -- input file with crystfel parameters (for `runner`)
-
-    Returns:
-        subprocess.Process -- runner process
     """
-    runner = subprocess.run(f"runner {input_yaml_file}", stdout=subprocess.PIPE)
-    return runner
+
+    os.system(f"~/github/still-utils/runner {input_yaml_file}")
 
 
 def num_crystals(input_stream="./laststream") -> int:
@@ -34,12 +32,15 @@ def num_crystals(input_stream="./laststream") -> int:
     Returns:
         int -- number of crystals in stream
     """
-    num_crystals = subprocess.run(
-        f"grep -c 'Begin crystal' {input_stream}", stdout=subprocess.PIPE
-    )
-    if num_crystals.check_returncode():
-        return None
-    return int(num_crystals.stdout.decode())
+    try:
+        num_crystals = subprocess.check_output(
+            f"grep -c 'Begin crystal' {input_stream}", shell=True
+        )
+    except subprocess.CalledProcessError:
+        num_crystals = 0
+
+    num_crystals = int(num_crystals)
+    return num_crystals
 
 
 def update_yaml(in_yaml: str, new_geom: str, inplace=True) -> str:
@@ -80,14 +81,15 @@ def update_geom_params(
     coffset: np.float,
     corner_x: np.float,
     corner_y: np.float,
-) -> dict:
+    inplace=True,
+) -> str:
     """
     Given an initial dict of values, 
     generates dict of geometry params, 
     given certain alpha, beta, coffset, corner_x and corner_y
 
     Arguments:
-        initial_dict {[type]} -- initial dictionary, containing all the values
+        initial_geom {[type]} -- initial geometry file
         alpha {np.float} -- angle of rotation along vertical axis (deg)
         beta {np.float} -- angle of rotation along horizontal axis (deg)
         coffset {np.float} -- crystal-to-detector length offset
@@ -95,8 +97,10 @@ def update_geom_params(
         corner_y {np.float} -- y coordinate of detector corner
 
     Returns:
-        dict -- updated dictioinary
+        str -- updated filename
     """
+
+    geom_upd = initial_geom + ".upd" if not inplace else initial_geom
 
     important_keys = ["fs", "ss", "corner_x", "corner_y", "coffset"]
     initial_dict = {}
@@ -120,12 +124,6 @@ def update_geom_params(
     fs_key, ss_key, corner_x_key, corner_y_key, coffset_key = map(
         _find_proper_key, important_keys
     )
-
-    # p0/fs = -1.000000x +0.000000y
-    # p0/ss = +0.000000x -1.000000y
-    # p0/corner_x = 719.846731
-    # p0/corner_y = 711.369219
-    # p0/coffset = 0.0
 
     answ = initial_dict.copy()
     answ[corner_x_key] = corner_x
@@ -153,7 +151,20 @@ def update_geom_params(
         [f"{elem:+f}{name}" for elem, name in zip(M[1], coordinates)]
     )
 
-    return answ
+    pr = []
+    with open(initial_geom, "r") as fin:
+        for idx, line in enumerate(fin):
+            pr.append(line[:-1])
+            for key in answ:
+                if line and line[:-1].replace(" ", "").split("=")[0] == key:
+                    pr = pr[:-1]
+                    pr.append(" = ".join(map(str, (key, answ[key]))))
+                    break
+
+    with open(geom_upd, "w") as fout:
+        print(*pr, sep="\n", file=fout)
+
+    return geom_upd
 
 
 def angles2matrix(ss_line: str, fs_line: str):
@@ -191,8 +202,9 @@ def ncrystals_objective(params):
 
     with open(yaml, "r") as fin:
         for line in fin:
-            if "GEOM =" in line:
-                initial_geom = line.split(" = ")[1][:-1]
+            if "GEOM:" in line:
+                initial_geom = line.replace(" ", "").split(":")[1][:-1]
+    print(initial_geom)
 
     geom_upd = update_geom_params(
         initial_geom=initial_geom,
@@ -202,9 +214,9 @@ def ncrystals_objective(params):
         corner_x=params["corner_x"],
         corner_y=params["corner_y"],
     )
-    yaml_upd = update_yaml(yaml, new_geom=geom_upd, inplace=False)
+    yaml_upd = update_yaml(yaml, new_geom=geom_upd, inplace=True)
     run_crystfel(yaml_upd)
-    return num_crystals()
+    return num_crystals() ** 2 + 1
 
 
 def main(args: List[str]):
@@ -239,8 +251,11 @@ def main(args: List[str]):
         "yaml": args.yaml,
     }
 
-    best = hyperopt.fmin(objective, params, algo=hyperopt.tpe.suggest, max_evals=100)
+    best = hyperopt.fmin(
+        ncrystals_objective, params, algo=hyperopt.tpe.suggest, max_evals=args.ntrials,
+    )
     print(best)
+    print(hyperopt.space_eval(params, best))
 
 
 if __name__ == "__main__":
