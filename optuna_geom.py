@@ -42,13 +42,13 @@ def num_crystals(input_stream="./laststream") -> int:
     return int(num_crystals.stdout.decode())
 
 
-def update_yaml(in_yaml: str, geom_params: dict, inplace=True) -> str:
+def update_yaml(in_yaml: str, new_geom: str, inplace=True) -> str:
     """
     Updates yaml file with given geometry params
 
     Arguments:
         in_yaml {str} -- input yaml filename
-        geom_params {dict} -- geometry parameters in crystfel format
+        new_geom {str} -- new geometry file
 
     Returns:
         str -- updated yaml path
@@ -60,26 +60,12 @@ def update_yaml(in_yaml: str, geom_params: dict, inplace=True) -> str:
         (line.split(": ")[-1], idx)
         for idx, line in enumerate(yaml_params)
         if line.startswith("GEOM: ")
-    ][0]
+    ][-1]
 
     out_yaml = in_yaml if inplace else f"{in_yaml}.upd"
-    out_geom = in_geom if inplace else f"{in_geom}.upd"
-
-    with open(in_geom, "r") as fin:
-        geom_lines = fin.read().split("\n")
-
-    # update geometry with geom_params
-    for idx, line in enumerate(geom_lines):
-        for key, value in geom_params.items():
-            if key in line:
-                line = " = ".join(map(str, (key, value)))
-        geom_lines[idx] = line
-
-    with open(f"{out_geom}", "w") as geom_fout:
-        print(*geom_lines, file=geom_fout, sep="\n")
 
     yaml_params[geom_line_index] = yaml_params[geom_line_index].replace(
-        in_geom, out_geom
+        in_geom, new_geom
     )
     with open(out_yaml, "w") as fout:
         print(*yaml_params, sep="\n", file=fout)
@@ -200,6 +186,27 @@ def angles2matrix(ss_line: str, fs_line: str):
     return M
 
 
+def ncrystals_objective(params):
+    yaml = params["yaml"]
+
+    with open(yaml, "r") as fin:
+        for line in fin:
+            if "GEOM =" in line:
+                initial_geom = line.split(" = ")[1][:-1]
+
+    geom_upd = update_geom_params(
+        initial_geom=initial_geom,
+        alpha=params["alpha"],
+        beta=params["beta"],
+        coffset=params["coffset"],
+        corner_x=params["corner_x"],
+        corner_y=params["corner_y"],
+    )
+    yaml_upd = update_yaml(yaml, new_geom=geom_upd, inplace=False)
+    run_crystfel(yaml_upd)
+    return num_crystals()
+
+
 def main(args: List[str]):
 
     parser = argparse.ArgumentParser(
@@ -222,6 +229,18 @@ def main(args: List[str]):
     parser.add_argument("--ntrials", type=int, help="Number of trials for optimization")
 
     args = parser.parse_args()
+
+    params = {
+        "alpha": hyperopt.hp.uniform("alpha", *map(float, args.alpha.split())),
+        "beta": hyperopt.hp.uniform("beta", *map(float, args.beta.split())),
+        "coffset": hyperopt.hp.uniform("coffset", *map(float, args.coffset.split())),
+        "corner_x": hyperopt.hp.uniform("corner_x", *map(float, args.corner_x.split())),
+        "corner_y": hyperopt.hp.uniform("corner_y", *map(float, args.corner_y.split())),
+        "yaml": args.yaml,
+    }
+
+    best = hyperopt.fmin(objective, params, algo=hyperopt.tpe.suggest, max_evals=100)
+    print(best)
 
 
 if __name__ == "__main__":
