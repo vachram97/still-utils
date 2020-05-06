@@ -239,6 +239,9 @@ def main(args: List[str]):
     parser.add_argument("--corner_y", type=str, help="Range for corner_y")
     parser.add_argument("--coffset", type=str, help="Range for coffset")
     parser.add_argument("--ntrials", type=int, help="Number of trials for optimization")
+    parser.add_argument(
+        "--algo", type=str, help="Type of algorithm", choices=("tpe", "random")
+    )
 
     args = parser.parse_args()
 
@@ -251,9 +254,12 @@ def main(args: List[str]):
         "yaml": args.yaml,
     }
 
-    best = hyperopt.fmin(
-        ncrystals_objective, params, algo=hyperopt.tpe.suggest, max_evals=args.ntrials,
-    )
+    if args.algo == "tpe":
+        algo = hyperopt.tpe.suggest
+    elif args.algo == "random":
+        algo = hyperopt.rand.suggest
+
+    best = hyperopt.fmin(ncrystals_objective, params, algo=algo, max_evals=args.ntrials)
     print(best)
     print(hyperopt.space_eval(params, best))
 
