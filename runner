@@ -89,7 +89,7 @@ mkdir -p "${CURRENT_LOGDIR}/indexer-logs" 2>/dev/null || exit 1;
 
 
 # Shuffling the stream
-if [[ "$SHUFFLE" == '1' ]]; then
+if [[ "$SHUFFLE" == 1 ]]; then
 	shuf "$LST" > input.lst # your list must have events to enable this
 	LST="input.lst";
 fi
