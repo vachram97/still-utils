@@ -31,9 +31,15 @@ def main(args: List[str]):
     stop = lambda s: args.stop in s
 
     lock = FileLock(f"{args.fout}.lock")
+    end_header = False
     for line in args.stdin:
+        if not end_neader:
+            buffer.append(line)
         if start(line):
-            buffer = []
+            if not end_header:
+                end_header = True
+            else:
+                buffer = []
         elif stop(line):
             with lock.acquire():
                 with open(f"{args.fout}", "a") as fout:
