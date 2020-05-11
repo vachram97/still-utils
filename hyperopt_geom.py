@@ -69,7 +69,7 @@ def update_yaml(in_yaml: str, new_geom: str, inplace=True) -> str:
         in_geom, new_geom
     )
     with open(out_yaml, "w") as fout:
-        print(*yaml_params, sep="\n", file=fout)
+        print(*yaml_params, sep="\n", file=fout, end="")
 
     return out_yaml
 
@@ -136,10 +136,10 @@ def update_geom_params(
     ss = f"{ss} + 0.0z" if "z" not in ss else ss
 
     M = angles2matrix(fs, ss)
-    z_axis = np.array([0, 0, 1])
+    x_axis = np.array([1, 0, 0])
     y_axis = np.array([0, 1, 0])
 
-    rotation_z = R.from_rotvec(alpha * z_axis)
+    rotation_z = R.from_rotvec(alpha * x_axis)
     rotation_y = R.from_rotvec(beta * y_axis)
     M = rotation_y.apply(rotation_z.apply(M))
 
