@@ -474,12 +474,13 @@ for method in "${METHODS[@]}"; do
 
 	tmp="$(grep -E -c -a -w "$method" "$INPUT")"	
 	let "NINDEXED=$NINDEXED+$tmp"
-	ratio=$(python -c "print(round(${tmp}/${NIMAGES},3))")
+	ratio=$(python3 -c "print(f'{round(${tmp}/${NIMAGES}*100,2):>7}%')")
+	# ratio=$(python -c "print(round(${tmp}/${NIMAGES}*100,2),r'%')")
 	echo -e "$ratio" "\t" "$tmp" "\t" "$method"
 done
 
-pythonstring='from __future__ import print_function; print(*[i.split("-i")[1].split()[0] for i in open("'$INPUT'", mode="r") if "indexamajig" in i],sep="\n")'
-NIMAGES_INPUT=$(python -c "$pythonstring" | xargs wc -l 2> /dev/null | tail -1 | awk '{print $1}') 
+pythonstring='print(sum([1 for line in open("'${INPUT}'","r") if line.startswith("indexamajig") for _ in open(line.split("-i ")[1].split()[0], "r")]))'
+NIMAGES_INPUT=$(python -c "$pythonstring")
 if [[ "$NIMAGES_INPUT" -eq 0 ]]; then
 	NIMAGES_INPUT="n/a (file lists not available)"; fi 
 
@@ -492,6 +493,11 @@ echo "Images for processing:      ${NIMAGES_INPUT}"
 echo "Number of processed images: ${NIMAGES}"
 echo "Number of indexed images:   ${NINDEXED}"
 echo "Number of crystals:  ${NCRYST}"
+echo "Total image indexing rate:: $(python -c "print(round(100*${NINDEXED}/${NIMAGES_INPUT}.,2))") %"
+echo "Total crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES_INPUT}.,2))") %"  
+
+if [[ $(grep -c -- '--no-non-hits-in-stream' ${INPUT}) != 0 ]]; then
+	echo -e "\e[33mWarning:\e[0m following two values are unreliable, since the stream does not contain hits with peaks less then certain value"; fi
 echo "Image indexing rate: $(python -c "print(round(100*${NINDEXED}/${NIMAGES}.,2))") %"
 echo "Crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES}.,2))") %"  
 
