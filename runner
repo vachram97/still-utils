@@ -102,7 +102,7 @@ BASEEXECSTRING="indexamajig \
 --min-snr=${SNR} \
 --threshold=${THRESHOLD} \
 --highres=${HIGHRES} \
---temp-dir=${CURRENT_LOGDIR}/indexer-logs \
+--temp-dir="/tmp" \
 --min-peaks=${MINPEAKS} \
 ${OTHERPARAMS}"
 
@@ -144,7 +144,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		# now writing the execution string itself
 		EXECSTRING="${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
 		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
-		EXECSTRING="${EXECSTRING} -j \`nproc\`"  # this will use the `nproc` value on host machine
+		EXECSTRING="${EXECSTRING} -j ${NPROC}"  # this will use the `nproc` value on host machine
 		echo "$EXECSTRING" >> "${current_worker}"
 
 		echo "cat ${current_stream} | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream" >> "${current_worker}"
