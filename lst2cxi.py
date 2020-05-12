@@ -13,7 +13,7 @@ def lst2cxi(
     cxi_path="/entry_1/data_1/data",
     output_cxi=None,
     compression="gzip",
-    chunks=100,
+    chunks=True,
 ) -> str:
     """
     Saves all images from input cxi file that are present in input list.
@@ -60,14 +60,15 @@ def lst2cxi(
                 if None in events:  # meaning we must dump whole cxi
                     data = h5fin[cxi_path]
                 else:
-                    data = np.array(data.value)[np.array(list(events))]
+                    #  data = np.array(data.value)[np.array(list(events))]
+                    data = np.array(data[np.array(sorted(list(events)))])
                 shape = data.shape
                 h5fout.create_dataset(
                     cxi_path,
                     shape,
                     compression="gzip",
                     data=data,
-                    chunks=(min(chunks, shape[0]), *shape[1:]),
+                    chunks=chunks
                 )
 
     return output_cxi
