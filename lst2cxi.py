@@ -48,7 +48,9 @@ def lst2cxi(
         output_cxi = input_lst.rsplit(".")[0] + ".cxi"
 
     with h5py.File(output_cxi, "w") as h5fout:
-        for input_cxi, events in events_dict.items():
+        for input_cxi, events in tqdm(
+            events_dict.items(), desc=f"Processing files in {input_lst} one by one"
+        ):
             with h5py.File(input_cxi, "r") as h5fin:
                 if None in events:  # meaning we must dump whole cxi
                     data = h5fin[cxi_path]
@@ -57,8 +59,6 @@ def lst2cxi(
                         cxi_path, shape, compression="gzip", data=data.value
                     )
                 else:
-                    print(h5fin.keys())
-                    print(cxi_path)
                     data = h5fin[cxi_path]
                     data = np.array(data.value)[np.array(list(events))]
                     shape = data.shape
@@ -103,4 +103,9 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=Warning)
+        main(sys.argv[1:])
