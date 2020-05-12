@@ -33,7 +33,7 @@ def main(args: List[str]):
     lock = FileLock(f"{args.fout}.lock")
     end_header = False
     for line in args.stdin:
-        if not end_neader:
+        if not end_header:
             buffer.append(line)
         if start(line):
             if not end_header:
