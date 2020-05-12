@@ -155,7 +155,7 @@ if [[ "${SLURM}" == "1" ]]; then
 
 		sbatch "${current_worker}"
 	done
-	tail -f "${CURRENT_LOGDIR}/stderr_*.log"
+	echo "tail -f ${CURRENT_LOGDIR}/stderr_*.log"
 
 else
 	# linking the laststream
