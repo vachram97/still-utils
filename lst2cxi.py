@@ -30,7 +30,7 @@ def lst2cxi(
                 filename, event = line.split(" //")
                 event = int(event)
                 if filename[0] != "/":  # if path is not absolute
-                    filename = os.getcwd() + filename
+                    filename = f"{os.getcwd()}/{filename}"
                 if filename in events_dict:
                     if None not in events_dict[filename]:
                         events_dict[filename].add(event)
@@ -43,8 +43,6 @@ def lst2cxi(
                 if filename[0] != "/":  # if path is not absolute
                     filename = os.getcwd() + filename
                 events_dict[line] = {None}
-
-    print(events_dict)
 
     if output_cxi is None:
         output_cxi = input_lst.rsplit(".")[0] + ".cxi"
@@ -59,6 +57,8 @@ def lst2cxi(
                         cxi_path, shape, compression="gzip", data=data.value
                     )
                 else:
+                    print(h5fin.keys())
+                    print(cxi_path)
                     data = h5fin[cxi_path]
                     data = np.array(data.value)[np.array(list(events))]
                     shape = data.shape
@@ -78,23 +78,26 @@ def main(args):
     parser.add_argument(
         "input_lst",
         type=str,
-        description="Input list in CrystFEL format (might be with or without events, or even combined)",
+        help="Input list in CrystFEL format (might be with or without events, or even combined)",
     )
     parser.add_argument(
-        "--cxi_path", type=str, description="Path to your data inside a cxi file"
+        "--cxi_path", type=str, help="Path to your data inside a cxi file"
     )
     parser.add_argument(
         "--output_cxi",
         type=str,
-        description="Output cxi file (if not present, will replace input *.lst to *.h5) ",
+        help="Output cxi file (if not present, will replace input *.lst to *.h5) ",
         default=None,
     )
 
     args = parser.parse_args()
 
-    ret = lst2cxi(
-        input_lst=args.input_lst, cxi_path=args.cxi_path, output_cxi=args.output_cxi
-    )
+    if args.cxi_path is None:
+        ret = lst2cxi(input_lst=args.input_lst, output_cxi=args.output_cxi)
+    else:
+        ret = lst2cxi(
+            input_lst=args.input_lst, cxi_path=args.cxi_path, output_cxi=args.output_cxi
+        )
 
     print(f"Data successfully written to {ret}")
 
