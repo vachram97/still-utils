@@ -23,7 +23,12 @@ def main(args: List[str]):
         "--start", type=str, help="Chunk start line", default="Begin chunk"
     )
     parser.add_argument("--stop", type=str, help="Chunk stop line", default="End chunk")
-    parser.add_argument("--buffer", type=int, help="Size of the chunk buffer (in number of chunks)", default=4)
+    parser.add_argument(
+        "--buffer",
+        type=int,
+        help="Size of the chunk buffer (in number of chunks)",
+        default=4,
+    )
     parser.add_argument("fout", type=str, help="Out file")
     args = parser.parse_args()
 
@@ -48,6 +53,7 @@ def main(args: List[str]):
                         fout.writelines(buffer)
                 buffer = []
                 counter = 0
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
