@@ -14,11 +14,12 @@ Also, still-utils aims to become a "give-me-your-data-get-HKL-in-return" package
 Scripts are written in bash and python3, and usually have somewhat expected CLI: run `script.sh -h` and inspect the output.
 
 ## Installation  <a name="Installation"></a>
-You should have `git`, `python3` and `python3-pip` installed. If not and you don't have root access to your machine, please ask your systems administrator to do so. In case you have it, run:
+### In case you don't have pip packaging
+You should have `python3` and `python3-pip` installed. If not and you don't have root access to your machine, please ask your systems administrator to do so. In case you have it, run:
 
 ```bash
 # Debian
-sudo apt-get install python3 python3-pip git
+sudo apt-get install python3 python3-pip
 ```
 
 ### Using python3-pip
@@ -38,10 +39,11 @@ ls ~/.local/bin
 
 ### Manually
 #### Clone the repository [outdated]
-After doing so, please clone this repo. I prefer having all my repos in `~/github`, so here is the command:
+I prefer having all my repos in `~/github`, so here is the command:
 ```bash
 mkdir -p ~/github/still-utils && git clone https://github.com/marinegor/still-utils.git ~/github/still-utils
 ```
+Run `sudo apt-get install git`, in case you don't have it yet.
 
 #### Install necessary python3 packages [outdated]
 Since you now have `pip3`, just do:
