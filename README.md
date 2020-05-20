@@ -1,4 +1,8 @@
-## Summary
+1. [Summary](#Summary)
+2. [Installation](#Installation)
+3. [User requirements](#Userrequirements)
+
+## Summary <a name="Summary"></a>
 
 ### What's still-utils?
 Set of scripts, which are still useful for processing of crystal diffraction data with CrystFEL.
@@ -9,7 +13,7 @@ Also, still-utils aims to become a "give-me-your-data-get-HKL-in-return" package
 ### What kind of scripts?
 Scripts are written in bash and python3, and usually have somewhat expected CLI: run `script.sh -h` and inspect the output.
 
-## Installation
+## Installation  <a name="Installation"></a>
 You should have `git`, `python3` and `python3-pip` installed. If not and you don't have root access to your machine, please ask your systems administrator to do so. In case you have it, run:
 
 ```bash
@@ -42,7 +46,7 @@ export PATH="$PATH:~/github/still-utils"
 ```
 so that you won't have to type full path to the scripts every time.
 
-## User requirements
+## User requirements (a.k.a. "what should I know to use it?)  <a name="Userrequirements"></a>
 If you don't know SSX/SFX data processing but really want to learn it, here is what I'd recommend:
 
   - make sure you know how to operate command line (e.g. complete [The Unix Workbench](https://www.coursera.org/learn/unix))
