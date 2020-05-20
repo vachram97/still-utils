@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from filelock import Timeout, FileLock
+from filelock import SoftFileLock as FileLock
 from typing import List
 
 
@@ -23,6 +23,7 @@ def main(args: List[str]):
         "--start", type=str, help="Chunk start line", default="Begin chunk"
     )
     parser.add_argument("--stop", type=str, help="Chunk stop line", default="End chunk")
+    parser.add_argument("--buffer", type=int, help="Size of the chunk buffer (in number of chunks)", default=4)
     parser.add_argument("fout", type=str, help="Out file")
     args = parser.parse_args()
 
@@ -32,21 +33,21 @@ def main(args: List[str]):
 
     lock = FileLock(f"{args.fout}.lock")
     end_header = False
+    counter = 0
     for line in args.stdin:
-        if not end_header:
-            buffer.append(line)
-        if start(line):
+        buffer.append(line)
+        if stop(line):
             if not end_header:
                 end_header = True
+            if counter < args.buffer:
+                counter += 1
+                continue
             else:
+                with lock:
+                    with open(args.fout, "a") as fout:
+                        fout.writelines(buffer)
                 buffer = []
-        elif stop(line):
-            with lock.acquire():
-                with open(f"{args.fout}", "a") as fout:
-                    fout.writelines(buffer+[line])
-            buffer = []
-            continue
-        buffer.append(line)
+                counter = 0
 
 if __name__ == "__main__":
     main(sys.argv[1:])
