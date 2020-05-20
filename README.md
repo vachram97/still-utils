@@ -21,13 +21,29 @@ You should have `git`, `python3` and `python3-pip` installed. If not and you don
 sudo apt-get install python3 python3-pip git
 ```
 
-### Clone the repository
+### Using python3-pip
+Installation is now as simple as:
+
+```bash
+python3 -m pip install --user git+https://github.com/marinegor/still-utils
+```
+
+This will install the package only, and also add the scripts to your "$PATH", meaning that they will be available now as any other Linux utility.
+In case you want to edit scripts manually, it's likely you'll find them here:
+
+```bash
+ls ~/.local/bin
+```
+
+
+### Manually
+#### Clone the repository [outdated]
 After doing so, please clone this repo. I prefer having all my repos in `~/github`, so here is the command:
 ```bash
 mkdir -p ~/github/still-utils && git clone https://github.com/marinegor/still-utils.git ~/github/still-utils
 ```
 
-### Install necessary python3 packages
+#### Install necessary python3 packages [outdated]
 Since you now have `pip3`, just do:
 
 ```bash
