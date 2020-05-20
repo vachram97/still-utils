@@ -88,6 +88,10 @@ def main(args):
         for elem in args.stdin.read().split("\n")
         if _extract_float(elem, args.column) is not None
     ]
+
+    if not data:
+        print("No input data found by hist.py")
+        return None
     plot_hist(
         data,
         bins=args.bins,

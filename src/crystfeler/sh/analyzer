@@ -293,8 +293,8 @@ if [ "${NPROC}" -lt 1 ]; then
 
 # check validity of HISTOGRAMS
 if  [[ "${HISTOGRAMS}" == "" ]]; then
-	echo -e "\e[33mWarning:\e[0m will use HISTOGRAMS=1 (do plot histograms) by default"
-	HISTOGRAMS="1"
+	echo -e "\e[33mWarning:\e[0m will use HISTOGRAMS=0 (do not plot histograms) by default"
+	HISTOGRAMS="0"
 elif [[ "${HISTOGRAMS}" == "1" ]] || [[ "${HISTOGRAMS}" == "0" ]]; then
 	:
 else
@@ -475,13 +475,12 @@ for method in "${METHODS[@]}"; do
 	tmp="$(grep -E -c -a -w "$method" "$INPUT")"	
 	let "NINDEXED=$NINDEXED+$tmp"
 	ratio=$(python3 -c "print(f'{round(${tmp}/${NIMAGES}*100,2):>7}%')")
-	# ratio=$(python -c "print(round(${tmp}/${NIMAGES}*100,2),r'%')")
 	echo -e "$ratio" "\t" "$tmp" "\t" "$method"
 done
 
 pythonstring='print(sum([1 for line in open("'${INPUT}'","r") if line.startswith("indexamajig") for _ in open(line.split("-i ")[1].split()[0], "r")]))'
-NIMAGES_INPUT=$(python -c "$pythonstring")
-if [[ "$NIMAGES_INPUT" -eq 0 ]]; then
+NIMAGES_INPUT=$(python3 -c "$pythonstring" 2> /dev/null)
+if [[ "$NIMAGES_INPUT" -eq "" ]]; then
 	NIMAGES_INPUT="n/a (file lists not available)"; fi 
 
 # 	- number of images for processing
@@ -493,8 +492,10 @@ echo "Images for processing:      ${NIMAGES_INPUT}"
 echo "Number of processed images: ${NIMAGES}"
 echo "Number of indexed images:   ${NINDEXED}"
 echo "Number of crystals:  ${NCRYST}"
-echo "Total image indexing rate:: $(python -c "print(round(100*${NINDEXED}/${NIMAGES_INPUT}.,2))") %"
-echo "Total crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES_INPUT}.,2))") %"  
+if [[ "$NIMAGES_INPUT" != "n/a (file lists not available)" ]]; then
+	echo "Total image indexing rate:: $(python -c "print(round(100*${NINDEXED}/${NIMAGES_INPUT}.,2))") %"
+	echo "Total crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES_INPUT}.,2))") %"  
+fi
 
 if [[ $(grep -c -- '--no-non-hits-in-stream' ${INPUT}) != 0 ]]; then
 	echo -e "\e[33mWarning:\e[0m following two values are unreliable, since the stream does not contain hits with peaks less then certain value"; fi

@@ -117,7 +117,7 @@ def get_angle(vecs1, vecs2):
     return np.rad2deg(np.arccos((np.trace(rmsd.kabsch(vecs1, vecs2)) - 1) / 2))
 
 
-def number_of_different_inverse_cells(vectors_set, rmsd_threshold=np.deg2rad(5.0)):
+def number_of_different_inverse_cells(vectors_set, rmsd_threshold):
     """\
     Returns number of actually different cells in a given set,
     where cells that differ on rotation of less than `rmsd` radians are
@@ -180,6 +180,8 @@ def main(args: List[str]):
         total_crystals = total_images * num_lattices
         true_crystals = sum(unique_cells)
         false_crystals = total_crystals - true_crystals
+        if not total_images:
+            continue
         print(
             f"For {num_lattices} crystals on image "
             f"total images: {total_images}, "
