@@ -46,7 +46,7 @@ export PATH="$PATH:~/github/still-utils"
 ```
 so that you won't have to type full path to the scripts every time.
 
-## User requirements (a.k.a. "what should I know to use it?)  <a name="Userrequirements"></a>
+## User requirements (a.k.a. "what should I know to use it?")  <a name="Userrequirements"></a>
 If you don't know SSX/SFX data processing but really want to learn it, here is what I'd recommend:
 
   - make sure you know how to operate command line (e.g. complete [The Unix Workbench](https://www.coursera.org/learn/unix))
