@@ -4,11 +4,13 @@ import os
 import subprocess
 import argparse
 import numpy as np
+import sys
+from tqdm import tqdm
 
 from angles2geom import (
-    update_geom_params_dict,
-    update_geom_params_dict,
     read_geom_to_dict,
+    update_geom_params_dict,
+    update_geom_file_from_dict,
 )  # pylint: disable-all
 
 
@@ -74,7 +76,9 @@ def distribution2geomfiles(
 
     initial_geom_dict = read_geom_to_dict(input_geometry)
 
-    for alpha, beta, corner_x, corner_y, coffset in distribution:
+    for alpha, beta, corner_x, corner_y, coffset in tqdm(
+        distribution, desc="Writing updated geometry files"
+    ):
         new_geom_dict = update_geom_params_dict(
             initial_geom=initial_geom_dict,
             alpha=alpha,
@@ -89,10 +93,11 @@ def distribution2geomfiles(
             input_geometry, dict_to_apply=new_geom_dict, inplace=False
         )
         if folder != os.getcwd():
-            os.mkdir(folder)
+            if not os.path.exists(folder):
+                os.mkdir(folder)
             os.system(f"mv {new_geom_file} {folder}")
 
-        print(f"All geometry files written to {folder}")
+    print(f"All geometry files written to {folder}")
 
 
 def main(args):
@@ -131,6 +136,7 @@ def main(args):
     parser.add_argument(
         "--relative",
         action="store_true",
+        default=False,
         help="Whether to invoke relative shifts in corner_x, corner_y, coffset",
     )
     parser.add_argument(
@@ -142,11 +148,11 @@ def main(args):
 
     distribution = ranges2distribution(
         nsamples=args.nsamples,
-        ralpha=map(float, args.ralpha.split()),
-        rbeta=map(float, args.rbeta.split()),
-        rcorner_x=map(float, args.rcorner_x),
-        rcorner_y=map(float, args.rcorner_y),
-        rcoffset=map(float, args.rcoffset),
+        ralpha=list(map(float, args.ralpha.split())),
+        rbeta=list(map(float, args.rbeta.split())),
+        rcorner_x=list(map(float, args.rcorner_x.split())),
+        rcorner_y=list(map(float, args.rcorner_y.split())),
+        rcoffset=list(map(float, args.rcoffset.split())),
     )
     distribution2geomfiles(
         input_geometry=args.input_file,
