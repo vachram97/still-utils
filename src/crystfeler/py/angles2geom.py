@@ -5,113 +5,14 @@ import argparse
 import os
 import numpy as np
 import sys
+from typing import Union
+from collections import defaultdict
 from scipy.spatial.transform import Rotation as R
-
-
-def update_geom_params(
-    initial_geom,
-    alpha: np.float,
-    beta: np.float,
-    coffset: np.float,
-    corner_x: np.float,
-    corner_y: np.float,
-    inplace=True,
-) -> str:
-    """
-    Given an initial dict of values, 
-    generates dict of geometry params, 
-    given certain alpha, beta, coffset, corner_x and corner_y
-
-    Arguments:
-        initial_geom {[type]} -- initial geometry file
-        alpha {np.float} -- angle of rotation along vertical axis (deg)
-        beta {np.float} -- angle of rotation along horizontal axis (deg)
-        coffset {np.float} -- crystal-to-detector length offset
-        corner_x {np.float} -- x coordinate of detector corner
-        corner_y {np.float} -- y coordinate of detector corner
-
-    Returns:
-        str -- updated filename
-    """
-
-    if inplace:
-        geom_upd = initial_geom
-    else:
-        geom_upd = (
-            f"{initial_geom[:-4]}_"
-            "a_{alpha:.4f}__"
-            "b_{beta:.4f}__"
-            "corX_{corner_x:.2f}__"
-            "corY_{corner_y:.2f}.geom"
-        )
-
-    important_keys = ["fs", "ss", "corner_x", "corner_y", "coffset"]
-    initial_dict = {}
-    with open(initial_geom, "r") as fin:
-        for line in fin:
-            for key in important_keys:
-                if line[0] != ";" and line.replace(" ", "").split("=")[0].endswith(
-                    f"/{key}"
-                ):
-                    key, value = line[:-1].replace(" ", "").split("=")
-                    initial_dict[key] = value
-
-    print(initial_dict)
-    alpha, beta = np.deg2rad(alpha), np.deg2rad(beta)
-
-    def _find_proper_key(val: str):
-        for key in initial_dict:
-            if key.endswith(val):
-                return key
-
-    fs_key, ss_key, corner_x_key, corner_y_key, coffset_key = map(
-        _find_proper_key, important_keys
-    )
-
-    answ = initial_dict.copy()
-    answ[corner_x_key] = corner_x
-    answ[corner_y_key] = corner_y
-    answ[coffset_key] = coffset
-
-    fs, ss = initial_dict[fs_key], initial_dict[ss_key]
-
-    fs = f"{fs} + 0.0z" if "z" not in fs else fs
-    ss = f"{ss} + 0.0z" if "z" not in ss else ss
-
-    M = angles2matrix(fs, ss)
-    x_axis = np.array([1, 0, 0])
-    y_axis = np.array([0, 1, 0])
-
-    rotation_x = R.from_rotvec(alpha * x_axis)
-    rotation_y = R.from_rotvec(beta * y_axis)
-    M = rotation_y.apply(rotation_x.apply(M))
-
-    coordinates = ("x", "y", "z")
-    answ[fs_key] = " ".join(
-        [f"{elem:+f}{name}" for elem, name in zip(M[0], coordinates)]
-    )
-    answ[ss_key] = " ".join(
-        [f"{elem:+f}{name}" for elem, name in zip(M[1], coordinates)]
-    )
-
-    pr = []
-    with open(initial_geom, "r") as fin:
-        for idx, line in enumerate(fin):
-            pr.append(line[:-1])
-            for key in answ:
-                if line and line[:-1].replace(" ", "").split("=")[0] == key:
-                    pr = pr[:-1]
-                    pr.append(" = ".join(map(str, (key, answ[key]))))
-                    break
-
-    with open(geom_upd, "w") as fout:
-        print(*pr, sep="\n", file=fout)
-
-    return geom_upd
 
 
 def angles2matrix(ss_line: str, fs_line: str):
 
+    print(fs_line, ss_line)
     fs_line = f"{fs_line} + 0.0z" if "z" not in fs_line else fs_line
     ss_line = f"{ss_line} + 0.0z" if "z" not in ss_line else ss_line
 
@@ -140,8 +41,191 @@ def angles2matrix(ss_line: str, fs_line: str):
     return M
 
 
+def read_geom_to_dict(input_geom) -> dict:
+    """
+    read_geom reads the geometry from file and returns corner_x, corner_y and matrix as dictionary
+
+    Parameters
+    ----------
+    input_geom : str
+        Input file name
+
+    Returns
+    -------
+    dict
+        {'corner_x':corner_x, 'corner_y':corner_y, 'coffset':coffset, 'M':M} dictionary, where M is the (fs,ss) <-- (x,y) matrix
+    """
+
+    important_keys = ["fs", "ss", "corner_x", "corner_y", "coffset", "clen", "res"]
+    float_keys = ["corner_x", "corner_y", "coffset", "clen", "res"]
+    ret = {}
+    for key in important_keys:
+        ret[key] = 0.0
+
+    with open(input_geom, "r") as fin:
+        for line in fin:
+            for key in important_keys:
+                if key == "clen":
+                    if line.replace(" ", "").split("=")[0] == key:
+                        ret[key] = np.float(line.replace(" ", "").split("=")[1])
+                elif line[0] != ";" and line.replace(" ", "").split("=")[0].endswith(
+                    f"/{key}"
+                ):
+                    _, value = line[:-1].replace(" ", "").split("=")
+                    if key in float_keys:
+                        value = np.float(value)
+                    ret[key] = value
+
+    print(ret)
+    M = angles2matrix(ret["ss"], ret["fs"])
+    ret["M"] = M
+
+    return ret
+
+
+def update_geom_params_dict(
+    initial_geom: dict,
+    alpha: 0,
+    beta: 0,
+    coffset: None,
+    corner_x: None,
+    corner_y: None,
+    relative=True,
+) -> dict:
+    """
+    Given an initial dict of values, 
+    generates dict of geometry params, 
+    given certain alpha, beta, coffset, corner_x and corner_y
+
+    Arguments:
+        initial_geom {dict} -- initial geometry file
+        alpha {np.float} -- angle of rotation along vertical axis (deg)
+        beta {np.float} -- angle of rotation along horizontal axis (deg)
+        coffset {np.float} -- crystal-to-detector length offset
+        corner_x {Union[None, np.float]} -- x coordinate of detector corner
+        corner_x {Union[None, np.float]} -- x coordinate of detector corner
+        relative{bool} -- whether corner_x, corner_y are relative shifts to previous position or absolute new values
+
+    Returns:
+        dict -- updated params in a dict
+    """
+
+    alpha, beta = np.deg2rad(alpha), np.deg2rad(beta)
+
+    M = initial_geom["M"]
+    Mhat = np.hstack((-M.T, np.array([0, 0, 1]).reshape(3, 1))).T
+
+    x_axis = np.array([1, 0, 0])
+    y_axis = np.array([0, 1, 0])
+
+    rotation_x = R.from_rotvec(alpha * x_axis)
+    rotation_y = R.from_rotvec(beta * y_axis)
+    Mhat_upd = rotation_y.apply(rotation_x.apply(Mhat))
+    M_upd = -1 * Mhat_upd[:-1, :]
+
+    corner_x_rot, corner_y_rot, clen_rot = (
+        Mhat_upd
+        @ np.linalg.inv(Mhat)
+        @ np.array(
+            [
+                initial_geom["corner_x"],
+                initial_geom["corner_y"],
+                initial_geom["clen"] * initial_geom["res"],  # converts clen to pixels
+            ]
+        )
+    )
+    if corner_x is None:  # keep the centre unmoved
+        corner_x = corner_x_rot
+    if corner_y is None:  # keep the centre unmoved
+        corner_y = corner_y_rot
+    if coffset is None:  # keep the centre unmoved
+        coffset = (
+            (clen_rot - initial_geom["clen"] * initial_geom["res"])
+            / initial_geom["res"]
+        )  # back to meters
+    if relative:
+        if corner_x is not None:
+            corner_x = initial_geom["corner_x"] + corner_x
+        if corner_x is not None:
+            corner_y = initial_geom["corner_y"] + corner_y
+        if coffset is not None:
+            coffset = initial_geom["coffset"] + coffset
+
+    ret = {
+        "corner_x": corner_x,
+        "corner_y": corner_y,
+        "coffset": coffset,
+        "M": M_upd,
+        "alpha": alpha,
+        "beta": beta,
+    }
+
+    return ret
+
+
+def update_geom_file_from_dict(
+    input_file: str, dict_to_apply: dict, inplace=False
+) -> str:
+    alpha, beta, corner_x, corner_y, coffset, M = (
+        dict_to_apply["alpha"],
+        dict_to_apply["beta"],
+        dict_to_apply["corner_x"],
+        dict_to_apply["corner_y"],
+        dict_to_apply["coffset"],
+        dict_to_apply["M"],
+    )
+    if inplace:
+        geom_upd = input_file
+    else:
+        geom_upd = (
+            f"{input_file[:-4]}__"
+            f"a_{np.rad2deg(alpha):.4f}__"
+            f"b_{np.rad2deg(beta):.4f}__"
+            f"coff_{coffset:.4f}__"
+            f"corX_{corner_x:.2f}__"
+            f"corY_{corner_y:.2f}.geom"
+        )
+
+    # assemble the fs/ss lines into crystfel format
+    coordinates = ("x", "y", "z")
+    fs_line = " ".join([f"{elem:+f}{name}" for elem, name in zip(M[0], coordinates)])
+    ss_line = " ".join([f"{elem:+f}{name}" for elem, name in zip(M[1], coordinates)])
+    dict_to_apply["fs"] = fs_line
+    dict_to_apply["ss"] = ss_line
+
+    pr = []  # lines to print into output file
+    with open(input_file, "r") as fin:
+        for line in fin:
+            pr.append(line[:-1])
+            if "=" not in line or "/" not in line:
+                continue
+            for key in dict_to_apply:
+                if key in line:
+                    key_g = line[:-1].replace(" ", "").split("=")[0].split("/")[1]
+                    if line and key_g == key:
+                        pr = pr[:-1]  # un-append the line
+                        upd_line = line.split("=")[0] + "=" + f" {dict_to_apply[key]}"
+                        pr.append(upd_line)
+                        break  # don't search the dict anymore
+
+    with open(geom_upd, "w") as fout:
+        print(*pr, sep="\n", file=fout)
+
+    return geom_upd
+
+
 def main(args):
-    """The main function"""
+    """\
+    The main function.
+
+    Remember following:
+
+    (x,y).T = M @ (fs, ss).T + (corner_x, corner_y).T,
+
+    where M is the matrix from fs=..., ss=... in geometry,
+    corner_x and corner_y are also from there,
+    and x, y are the resulting physical coordinates
+    """
 
     parser = argparse.ArgumentParser(
         description="""Applies angles to given geometry and saves updated geometry in a separate file"""
@@ -159,22 +243,55 @@ def main(args):
         default=0,
         help="Beta angle (rotation along y axis -- along the beam)",
     )
-    parser.add_argument("--coffset", type=float, default=0, help="corner_y value")
-    parser.add_argument("--corner_x", type=float, help="corner_x value")
-    parser.add_argument("--corner_y", type=float, help="corner_y value")
+    parser.add_argument(
+        "--coffset",
+        type=float,
+        default=None,
+        help="New coffset value (keep old by default)",
+    )
+    parser.add_argument(
+        "--corner_x",
+        type=float,
+        default=None,
+        help="New corner_x value (keep old by default)",
+    )
+    parser.add_argument(
+        "--corner_y",
+        type=float,
+        default=None,
+        help="New corner_y value (keep old by default)",
+    )
+    parser.add_argument(
+        "--relative",
+        action="store_true",
+        default=False,
+        help="Whether to invoke relative corner_x, corner_y update",
+    )
+    parser.add_argument(
+        "--inplace",
+        action="store_true",
+        default=False,
+        help="Whether to update geometry in-place",
+    )
 
     args = parser.parse_args()
 
-    ret = update_geom_params(
-        args.input_file,
+    initial_geom_dict = read_geom_to_dict(args.input_file)
+    new_geom_dict = update_geom_params_dict(
+        initial_geom=initial_geom_dict,
         alpha=args.alpha,
         beta=args.beta,
+        coffset=args.coffset,
         corner_x=args.corner_x,
         corner_y=args.corner_y,
-        coffset=args.coffset,
+        relative=args.relative,
     )
 
-    print(f"Saved geometry to {ret}")
+    new_geom_file = update_geom_file_from_dict(
+        args.input_file, dict_to_apply=new_geom_dict, inplace=False
+    )
+
+    print(f"Saved geometry to {new_geom_file}")
 
 
 if __name__ == "__main__":
