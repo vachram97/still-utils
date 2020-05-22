@@ -5,6 +5,8 @@ import subprocess
 import argparse
 import numpy as np
 
+# from .angles2geom import read_geom_to_dict, update_geom_file_from_dict, update_geom_params_dict
+
 
 def ranges2distribution(
     nsamples: int,
@@ -46,3 +48,20 @@ def ranges2distribution(
     )
 
     return ret
+
+
+def distribution2geomfiles(input_geometry: str, distribution:np.ndarray, folder=os.getcwd()) -> None:
+    """
+    distribution2geomfiles spawns creation of geometry fiels from a given distribution
+
+    Parameters
+    ----------
+    input_geometry : str
+        Input geometry file to serve as a base
+    distribution : np.ndarray
+        Given distribution
+    folder : [type], optional
+        Folder to put all geometries in, by default os.getcwd()
+    """
+
+    pass
