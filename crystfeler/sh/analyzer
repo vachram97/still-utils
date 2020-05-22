@@ -1,0 +1,604 @@
+#!/bin/bash
+exec 3>&1 4>&2
+trap 'exec 2>&4 1>&3' 0 1 2 3
+exec 1> >(tee /tmp/analyzer.log) 
+
+# Example here: https://github.com/marinegor/still-utils/blob/master/peaks2json.py
+# TODO: add per-run percent of indexed images
+
+HELP_STRING="\
+This is a wrapper script for CrystFEL-based processing of SFX data, written by Egor Marin @marinegor.
+Please contact me via marin@phystech.edu or github, if you know any issue.
+
+It provides you with extensive information about your stream file
+and merging statistics without usage of GUI.
+
+It is written in bash and uses only standard CrystFEL utils, such as 
+process_hkl, partialator, compare_hkl, etc.
+
+------
+Usage:
+------
+	./analyzer -i output.stream --merging process_hkl --lowres 30.0 --highres 3.0 -y mmm --pushres 2.5
+
+		Provides you with output.stream indexing stats 
+		and performs merging with process_hkl
+
+
+	./analyzer -i lysozyme --rate --highres 2.5 -y mmm --lowres 20.0 --cell lyz_v2.cell
+
+		Runs compare_hkl on previously generated hkl files
+		with different unit cell file and resolution cutoffs
+
+
+--------------------
+Workflow parameters:
+--------------------
+	-i, --input
+		Input file name (name or mask)
+	--cell, -p
+		Unit cell file (used for compare_hkl only)
+	--merging
+		How you want your merging to be done. 
+		Options:
+			none:	no merging will be performed
+			process_hkl: merging with process_hkl will be performed
+			partialator: merging with partialator will be done
+	--rate
+		You may want to rate previously processed HKL-file, but not perform any
+		merging on stream. If that is true, input file name --input should be
+		an HKL filename, rather than a stream. All three <>.[hkl, hkl1, hkl2]
+		should be present.
+	--multi_rmsd
+		Used by multilattice_validate.py as cutoff (in degrees).
+		If two lattices on the same image might be rotated on angle less than that,
+		they will be considered as a false multiple.
+	--nproc, -j
+		Number of processors to be used for merging. By default, output of 'nproc'.
+		If --nproc=0 or less, will use all availalbe and print warning.
+	--logs
+		A folder to write logs in. By default, logs/analyzer.<stream_md5sum>.<date>
+	--histograms
+		Whether to write histogram of resolutions or not (0 or 1).
+		By default 1 -- does not build a histogram.
+	--cleanup
+		Whether you want to remove temporary files, such as concatenated stream,
+		after the run is finished. Should be 0 or 1 (1 by default -- will clean up).
+-------------------
+Merging parameters:
+-------------------
+	--lowres, --highres
+		Low and high resolution for output merging statistics table
+	--pushres
+		Merges reflections of higher than resolution_limit for each particular crystal,
+		as predicted by peakfinder8 or peakfinder9.
+		Quote from the process_hkl man:
+		\"Merge reflections which are up to n nm^-1 higher than the apparent resolution limit of each individual crystal.
+		 n can be negative to merge lower than the apparent resolution limit.\"
+		However, negative is yet disabled by this script, since it hasn't been useful so far.
+	--iterations
+		Number of iterations for scaling (used by partialator only)
+	--highres_include
+		Include in final merging only those crystals that have crystfel-predicted resolution higher than that.
+		Used by process_hkl only (--min-res in man), partialator does not have this feature.
+	--min_cc
+		Quote from process_hkl man:
+		 \"Perform a second pass through the input, merging crystals only if their correlation with the initial model is at least n.\"
+	-y, --symmetry
+		Symmetry for merging. 
+		Used by process_hkl/partialator and compare_hkl and check_hkl.
+	--model
+		Model for partialator. Should be either 'unity' or 'xsphere'.
+	--string_params
+		Parameters for either process_hkl or partialator provided as a string.
+		Warning: it is your duty to make sure you provide valid parameters for
+		the tool of your choice.
+"
+
+INPUT=""
+CELL=""
+MERGING="none"
+RATE=""
+NPROC=$(nproc)
+LOGS=""
+CLEANUP=1
+HISTOGRAMS=""  # TODO: add BINS and other histogram plotting parameters
+#---------
+LOWRES=""
+HIGHRES=""
+SYMMETRY=""
+PUSHRES="" 
+HIGHRES_INCLUDE=""
+MIN_CC=""
+ITERATIONS=""
+STRING_PARAMS=""
+MODEL=""
+MULTI_RMSD=""
+
+############################
+# READING INPUT PARAMETERS #
+############################
+while [[ $# -gt 0 ]]; do
+	key="$1"
+	# echo "..Current argument is ${key}"
+	case "$key" in 
+		-h|--help)
+			echo "${HELP_STRING}";
+			exit 0
+	shift
+	;;
+	#----------------------------------------
+		-i|--input)
+			if ! [ -f "$3" ]; then
+				echo "Single-stream mode"
+				INPUT="$2";
+				shift
+			else
+				num_streams=0
+				if [ -f "tmp.stream" ]; then 
+					echo "Removing tmp.stream" 
+					rm "tmp.stream"; fi
+				while [ -f "$2" ]; do
+					echo "    ...using $2 as part of input file"
+					cat "$2" >> 'tmp.stream'
+					let num_streams="$num_streams"+1
+					shift
+				done
+				echo "Multi-stream mode, $num_streams streams"
+				INPUT="tmp.stream";
+			fi
+	;; # there is no shift here for correct multi-stream input
+	#----------------------------------------
+		-p|--cell)
+			CELL="$2"
+	shift
+	;;
+	#---------------------------------------- #
+		--merging)
+			MERGING="$2"
+			if [[ "$MERGING" != "none" ]] && [[ "$MERGING" != "partialator" ]] && [[ "$MERGING" != "process_hkl" ]]; then
+				echo "MERGING parameter should be either 'none' or 'process_hkl' or 'partialator'"; exit 1
+			fi
+	shift
+	;;
+	#----------------------------------------
+		--rate)
+			RATE="TRUE"
+	;;
+	#----------------------------------------
+		--nproc|-j)
+			NPROC="$2"
+	shift
+	;;
+	#----------------------------------------
+		--logs)
+			LOGS="$2"
+	shift
+	;;
+	#----------------------------------------
+		--histograms)
+			HISTOGRAMS="$2"
+	shift
+	;;
+	#----------------------------------------
+		--cleanup)
+			CLEANUP="$2"
+	shift
+	;;
+	#----------------------------------------
+		--lowres)
+			LOWRES="$2"
+	shift
+	;;
+	#----------------------------------------
+		--highres)
+			HIGHRES="$2"
+	shift
+	;;
+	#---------------------------------------- 
+		--pushres)
+			PUSHRES="$2"
+	shift
+	;;
+	#----------------------------------------
+		--iterations)
+			ITERATIONS="$2"
+	shift
+	;;
+	#----------------------------------------
+		--highres_include)
+			HIGHRES_INCLUDE="$2"
+	shift
+	;;
+	#----------------------------------------
+		--multi_rmsd)
+			MULTI_RMSD="$2"
+	shift
+	;;
+	#----------------------------------------
+		--min_cc)
+			MIN_CC="$2"
+	shift
+	;;
+	#----------------------------------------
+		--string_params)
+			STRING_PARAMS="$2"
+	shift
+	;;
+	#----------------------------------------
+		--model)
+			MODEL="$2"
+	shift
+	;;
+	#----------------------------------------
+		--symmetry|-y)
+			SYMMETRY="$2"
+	shift
+	;;
+	#----------------------------------------
+	esac
+	shift # past argument or value
+done
+
+
+################################################
+# CHECKING THAT ALL INPUT PARAMETERS ARE VALID #
+################################################
+
+# check validity of INPUT
+if ! [[ -f "$INPUT" ]]; then
+	echo -e "\e[31mError:\e[0m input file <${INPUT}> not found"; exit 1
+fi
+
+# check validity of LOGS
+if [[ "${LOGS}" == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m you have not provided --logs, will use default value"
+	HASH=$(md5sum "${INPUT}" | head -c 6)
+	if ! [[ -d "logs" ]]; then echo -e "\e[33mWarning:\e[0m will create ./logs folder"; fi
+	LOGS="logs/analyzer.${HASH}.$(date +%F-%H-%M-%S)"
+	mkdir -p "${LOGS}"
+else
+	if [[ -d "$LOGS" ]]; then echo -e "\e[31mError:\e[0m folder <${LOGS}> exist, will not proceed"; exit 1; fi
+	mkdir -p "$LOGS"
+fi
+
+# check validity of CELL
+if ! [[ -f "$CELL" ]]; then
+	echo -e "\e[33mWarning:\e[0m could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
+	echo -e "\e[33mWarning:\e[0m will proceed using cell from the stream"
+	if [[ -f ./extract_cell.py ]]; then
+		./extract_cell.py ${INPUT} > "${LOGS}/input.cell"
+		echo -e "\e[33mWarning:\e[0m using cell ${LOGS}/input.cell -- check if it's correct"
+		CELL="${LOGS}/input.cell"
+	elif command -v extract_cell.py 2 >/dev/null;  then
+		extract_cell.py ${INPUT} > "${LOGS}/input.cell"
+		echo -e "\e[33mWarning:\e[0m using cell ${LOGS}/input.cell -- check if it's correct"
+		CELL="${LOGS}/input.cell"
+	else
+		echo -e "\e[33mWarning:\e[0m 'extract_cell.py' is not in current or path, won\'t be used"
+		CELL=""
+	fi
+else
+	:
+fi
+
+# check validity of NPROC
+is_integer='^[0-9]+$'
+if ! [[ ${NPROC} =~ $is_integer ]] ; then
+	echo "Erorr: NPROC should be a valid number, now <${NPROC}>"; exit 1; fi
+if [ "${NPROC}" -gt "$(nproc)" ]; then
+	echo -e "\e[31mError:\e[0m NPROC should be less or equal than maximum available $(nproc)"; exit 1; fi
+if [ "${NPROC}" -lt 1 ]; then
+	echo -e "\e[33mWarning:\e[0m will use all available processors, since you provided ${NPROC} < 1"; fi
+
+# check validity of HISTOGRAMS
+if  [[ "${HISTOGRAMS}" == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m will use HISTOGRAMS=0 (do not plot histograms) by default"
+	HISTOGRAMS="0"
+elif [[ "${HISTOGRAMS}" == "1" ]] || [[ "${HISTOGRAMS}" == "0" ]]; then
+	:
+else
+	echo -e "\e[31mError:\e[0m HISTOGRAMS should be either '1' or '0', you provided <${HISTOGRAMS}>."; 
+	exit 1; 
+fi
+
+
+# check validity of CLEANUP
+if  [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
+	echo -e "\e[31mError:\e[0m CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."; exit 1; fi
+
+# check validity of LOWRES and HIGHRES
+is_float_positive='^[0-9]*\.[0-9]*$'
+if [[ ${LOWRES} == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m LOWRES will be 30.0 by default"
+	LOWRES=30.0; fi
+if [[ ${HIGHRES} == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m HIGHRES will be 3.0 by default"
+	HIGHRES=3.0; fi
+if ! [[ ${LOWRES} =~ $is_float_positive ]]; then
+	echo -e "\e[31mError:\e[0m LOWRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+if ! [[ ${HIGHRES} =~ $is_float_positive ]]; then
+	echo -e "\e[31mError:\e[0m HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"; exit 1; fi
+if [[ $(python -c "print(${HIGHRES}>=${LOWRES})") == "True" ]]; then
+	echo -e "\e[31mError:\e[0m HIGHRES >= LOWRES"; exit 1; fi
+
+# check validity of PUSHRES
+is_float_positive='^[0-9]*\.[0-9]*$'
+if [[ ${PUSHRES} == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m will use default PUSHRES=1.0"; PUSHRES=1.0; fi
+if ! [[ ${PUSHRES} =~ $is_float_positive ]]; then
+	echo -e "\e[31mError:\e[0m PUSHRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+
+# check validity of ITERATIONS
+is_integer='^[0-9]+$'
+if [[ ${ITERATIONS} == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m will use default ITERATIONS=0"; ITERATIONS=0; fi
+if ! [[ ${ITERATIONS} =~ $is_integer ]]; then
+	echo -e "\e[31mError:\e[0m ITERATIONS should be valid integer number, e.g. 3 (but '03' or '3.' would be invalid)"; exit 1; 
+elif [ ${ITERATIONS} -ge 3 ]; then
+	echo -e "\e[33mWarning:\e[0m are you sure ITERATIONS should be more than 2? It may cause unstable merging and scaling"
+fi
+
+# check validity of HIGHRES_INCLUDE
+is_float_positive='^[0-9]*\.[0-9]*$'
+if [[ ${HIGHRES_INCLUDE} == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m will use default HIGHRES_INCLUDE=100.0 (basically, include all possible resolutions)"; 
+	HIGHRES_INCLUDE=100.0; 
+fi
+if ! [[ ${HIGHRES_INCLUDE} =~ $is_float_positive ]]; then
+	echo -e "\e[31mError:\e[0m HIGHRES_INCLUDE should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+
+# check validity of MULTI_RMSD
+is_float_positive='^[0-9]*\.[0-9]*$'
+if [[ ${MULTI_RMSD} == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m will use default MULTI_RMSD=5.0 degrees"; MULTI_RMSD=5.0; fi
+if ! [[ ${MULTI_RMSD} =~ $is_float_positive ]]; then
+	echo -e "\e[31mError:\e[0m MULTI_RMSD should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+if [[ $(python -c "print(${MULTI_RMSD}>30)") == "True" ]]; then
+	echo -e "\e[33mWarning:\e[0m are you sure you want your MULTI_RMSDs be that large? It may give unreasonably high false multiples number"; fi
+
+# check validity of MIN_CC
+is_float='^\-{0,1}[0-9]*\.[0-9]*$'
+if [[ ${MIN_CC} == "" ]]; then
+	echo -e "\e[33mWarning:\e[0m will use default MIN_CC=-1.0"; MIN_CC=-1.0; fi
+if ! [[ ${MIN_CC} =~ $is_float ]]; then
+	echo "$MIN_CC"
+	echo -e "\e[31mError:\e[0m MIN_CC should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+if [[ $(python -c "print(${MIN_CC}>1.0)") == "True" ]] || [[ $(python -c "print(${MIN_CC}<-1.0)") == "True" ]]; then
+	echo -e "\e[31mError:\e[0m |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"; exit 1; fi
+
+# check validity of MODEL
+if [[ ${MERGING} == "partialator" ]]; then
+	if [[ ${MODEL} == "" ]]; then
+		echo -e "\e[33mWarning:\e[0m will use 'unity' model by default"; MODEL="unity"; fi
+
+	if ! [[ ${MODEL} == "unity" ]] && ! [[ ${MODEL} == "xsphere" ]]; then
+		echo -e "\e[31mError:\e[0m MODEL should be either 'unity' or 'xsphere'"; exit 1; fi
+fi
+
+# check validity of SYMMETRY
+if ! [[ ${MERGING} == "none" ]]; then
+	if [[ ${SYMMETRY} == "" ]]; then
+	echo -e "\e[31mError:\e[0m you must provide SYMMETRY instead of <${SYMMETRY}>, if you do merging"; exit 1; fi
+fi
+
+
+# check validity of RATE
+if [[ "$RATE" == "TRUE" ]]; then
+	if [[ ${CELL} == "" ]]; then
+		echo -e "\e[31mError:\e[0m you must provide valid cell file"; exit 1
+	elif ! [[ -f ${CELL} ]]; then
+		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided does not exist"; exit 1
+	elif [[ $(wc -l < ${CELL}) -lt 6 ]]; then
+		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided has less than 6 lines and thereby is probably empty"; exit 1
+	fi
+fi
+
+#----------------------------------------------------------------------------------------------
+
+#################
+# RATE FUNCTION #
+#################
+function rate() {
+	echo "Wait, rating is in progress..."
+
+	# outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
+    HKL_TEMPLATE="$1"
+	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
+	FOMS=("rsplit" "cc" "ccstar")
+	touch "${LOGS}/execution.log" &> /dev/null
+	
+	# do per-shell stats.dat
+	for fom in "${FOMS[@]}"; do
+		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 10 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}.log"
+		echo "${STRING}" >> "${LOGS}/execution.log"
+		eval "${STRING}"
+		mv shells.dat "${LOGS}/shells_${fom}.dat"
+	done
+	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 10 &> ${LOGS}/check_hkl.log"
+	echo "${STRING}" >> "${LOGS}/execution.log"
+	eval "${STRING}"
+	mv shells.dat "${LOGS}/check_hkl.dat"
+
+	# do whole-resolution
+	for fom in "${FOMS[@]}"; do
+		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 1 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}_full.log"
+		echo "${STRING}" >> "${LOGS}/execution.log"
+		eval "${STRING}"
+		mv shells.dat "${LOGS}/shells_${fom}_full.dat" &> /dev/null
+	done
+	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 1 &> ${LOGS}/check_hkl_full.log"
+	echo "${STRING}" >> "${LOGS}/execution.log"
+	eval "${STRING}"
+	mv shells.dat "${LOGS}/check_hkl_full.dat" &> /dev/null
+
+	# merge all together
+
+	paste "${LOGS}/check_hkl.dat" \
+		<(awk '{print $3}' "${LOGS}/shells_rsplit.dat" ) \
+		<(awk '{print $3}' "${LOGS}/shells_cc.dat"     ) \
+		<(awk '{print $3}' "${LOGS}/shells_ccstar.dat" ) | head -n 1 >> "${LOGS}/overall_stats.csv"
+	paste "${LOGS}/check_hkl.dat" \
+		<(awk '{print $2}' "${LOGS}/shells_rsplit.dat" ) \
+		<(awk '{print $2}' "${LOGS}/shells_cc.dat"     ) \
+		<(awk '{print $2}' "${LOGS}/shells_ccstar.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
+    echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" \
+		>> "${LOGS}/overall_stats.csv"
+	paste "${LOGS}/check_hkl_full.dat" \
+		<(awk '{print $2}' "${LOGS}/shells_rsplit_full.dat" ) \
+		<(awk '{print $2}' "${LOGS}/shells_cc_full.dat"     ) \
+		<(awk '{print $2}' "${LOGS}/shells_ccstar_full.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
+	cat "${LOGS}/overall_stats.csv"
+
+}
+
+# PART WHERE I DO STREAM ANALYTICS
+#	- per-indexer dictribution
+if [[ "${RATE}" == "TRUE" ]]; then
+	echo "Will only perform rating"
+	rate "$INPUT"
+	mv "/tmp/analyzer.log" "${LOGS}/analyzer.log"
+	exit 0;
+fi
+
+NIMAGES=$(grep -a "Begin chunk" "$INPUT" -c)
+NCRYST=$(grep -a "Begin crystal" "$INPUT" -c)
+METHODS=($(grep -E -a "indexed_by" "$INPUT" | grep -a -v 'none' | sort | uniq | awk 'NF>1{print $NF}' | tr '\n' ' '))
+NINDEXED=0
+
+echo "================"
+echo "Indexer details"
+echo "================"
+for method in "${METHODS[@]}"; do
+	if [ "$method" = "none" ]; then continue; fi
+
+	tmp="$(grep -E -c -a -w "$method" "$INPUT")"	
+	let "NINDEXED=$NINDEXED+$tmp"
+	ratio=$(python3 -c "print(f'{round(${tmp}/${NIMAGES}*100,2):>7}%')")
+	echo -e "$ratio" "\t" "$tmp" "\t" "$method"
+done
+
+pythonstring='print(sum([1 for line in open("'${INPUT}'","r") if line.startswith("indexamajig") for _ in open(line.split("-i ")[1].split()[0], "r")]))'
+NIMAGES_INPUT=$(python3 -c "$pythonstring" 2> /dev/null)
+if [[ "$NIMAGES_INPUT" -eq "" ]]; then
+	NIMAGES_INPUT="n/a (file lists not available)"; fi 
+
+# 	- number of images for processing
+#	- fraction of multiple hits
+echo "================"
+echo "Indexing summary"
+echo "================"
+echo "Images for processing:      ${NIMAGES_INPUT}"
+echo "Number of processed images: ${NIMAGES}"
+echo "Number of indexed images:   ${NINDEXED}"
+echo "Number of crystals:  ${NCRYST}"
+if [[ "$NIMAGES_INPUT" != "n/a (file lists not available)" ]]; then
+	echo "Total image indexing rate:: $(python -c "print(round(100*${NINDEXED}/${NIMAGES_INPUT}.,2))") %"
+	echo "Total crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES_INPUT}.,2))") %"  
+fi
+
+if [[ $(grep -c -- '--no-non-hits-in-stream' ${INPUT}) != 0 ]]; then
+	echo -e "\e[33mWarning:\e[0m following two values are unreliable, since the stream does not contain hits with peaks less then certain value"; fi
+echo "Image indexing rate: $(python -c "print(round(100*${NINDEXED}/${NIMAGES}.,2))") %"
+echo "Crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES}.,2))") %"  
+
+
+echo "======================="
+echo "Spitting out some lists"
+echo "======================="
+
+#	- number of processed images (and full list)
+#	- number of indexed images (and full list)
+for method in "${METHODS[@]}"; do
+	if [[ $(grep -c "Event" ${INPUT}) -gt 3 ]]; then
+		grep "indexed_by = ${method}" ${INPUT} -B 4 | grep "Image filename\|Event" | grep "Image\|Event" | sed 'N;s/\n/ /' | awk '{print $3, $5}' > "${LOGS}/indexed_by_${method}.lst"
+	else
+		grep "indexed_by = ${method}" ${INPUT} -B 3 | grep "Image filename" | grep "Image" | awk '{print $3, $5}' >"${LOGS}/indexed_by_${method}.lst"
+	fi
+	echo "Indexed by $method here:         ${LOGS}/indexed_by_${method}.lst"
+done
+
+
+# calling multilattice_validate.py (this repo)
+if [[ -f ./multilattice_validate.py ]]; then
+	./multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
+elif command -v multilattice_validate.py &> /dev/null;  then
+	multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
+else
+	echo -e "\e[33mWarning:\e[0m 'multilattice_validate.py' is not in current or path, won\'t be used"
+fi
+
+
+# PART WHERE I EXECUTE EXTERNAL SCRIPTS
+#	- detector-shift -- compare shifted and non-shifted values # TODO
+
+mv "/tmp/analyzer.log" "${LOGS}/analyzer.log"
+
+# PART WHERE I DRAW HISTOGRAMS
+if [[ ${HISTOGRAMS} == "1" ]]; then
+	echo "Parameter: num_peaks (all chunks)"
+	grep "num_peaks" ${INPUT} | hist.py --xmin 2.0 --xmax 30.0 --bins 28
+	echo "Parameter: diffraction_resolution_limit (crystals)"
+	grep "diffraction_resolution_limit" ${INPUT} | hist.py --xmax 7.0 --column -2
+	echo "Parameter: num_peaks (only chunks with crystals)"
+	grep "num_peaks\|diffraction_resolution_limit" ${INPUT} \
+		| grep -B 1 "diffraction_resolution" \
+		| grep "num" | hist.py  --xmax 40.0 --xmin 0.0
+fi
+
+
+# PART WHERE I MERGE THE DATA
+if [[ "$MERGING" == "partialator" ]]; then
+	# runs partialator to estimate rmeas and other foms
+	MERGING_COMMAND="partialator \
+-i $INPUT \
+-o ${LOGS}/merged.hkl \
+--iterations=$ITERATIONS \
+-j $NPROC \
+--model=$MODEL  \
+--push-res=$PUSHRES \
+--symmetry=$SYMMETRY \
+--min-res=${HIGHRES_INCLUDE} \
+${STRING_PARAMS}"
+	echo "Merging with following command: ${MERGING_COMMAND}"
+	eval "${MERGING_COMMAND}" | tee "${LOGS}/partialator.log"
+
+# TODO: if highres_include is large, do not do second pass
+elif [[ "$MERGING" == "process_hkl" ]]; then
+	MERGING_COMMAND="process_hkl \
+-i $INPUT \
+--push-res=$PUSHRES \
+--symmetry=$SYMMETRY \
+--min-res=${HIGHRES_INCLUDE} \
+--min-cc=${MIN_CC} \
+${STRING_PARAMS}"
+	echo "Merging with following command: ${MERGING_COMMAND} -o ${LOGS}/merged.hkl"
+	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl"              | tee "${LOGS}/process_hkl.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl1 --odd-only"  | tee "${LOGS}/process_hkl1.log"
+	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl2 --even-only" | tee "${LOGS}/process_hkl2.log"
+else
+	:
+fi	
+
+
+# PART WHERE I ACCESS THE MERGED DATA QUALITY
+if ! [[ "$MERGING" == "none" ]]; then
+	# check whether data have been properly merged
+	if ! [[ -f ${LOGS}/merged.hkl ]]; then
+		echo -e "\e[31mError:\e[0m data were not properly merged"
+		echo "See ${LOGS}/${MERGING}.log for full log"
+		exit 1
+	fi
+	rate "${LOGS}/merged.hkl"
+fi
+
+
+###########
+# CLEANUP #
+###########
+if [ "$CLEANUP" -eq 0 ]; then
+	echo "......."
+	echo -e "\e[33mWarning:\e[0m will not do cleanup"
+else # no elif here -- validity check above guaranteers that else is enough
+	if [[ -f tmp.stream ]]; then rm tmp.stream; fi
+fi
