@@ -14,27 +14,19 @@ from angles2geom import (
 )  # pylint: disable-all
 
 
-def uniform_dispatchNone(low, high, size):
+def single_uniform_dispatchNone(low, high, size):
     """
-    uniform_dispatchNone allows one to extend np.random.uniform and accept None as sampling margin (returning None)
+    single_uniform_dispatchNone allows one to extend np.random.uniform and accept None as sampling margin (returning None)
     """
-    assert len(size) == 1
-    size = size[0]  # dirty, but assertion above makes it work
-    is_none_along_axis = [
-        True if low[i] is None or high[i] is None else (low[i], high[i])
+    assert len(low) == len(high)
+
+    ret = [
+        np.random.uniform(low[i], high[i])
+        if low[i] is not None and high[i] is not None
+        else None
         for i, _ in enumerate(zip(low, high))
     ]
-
-    axises = []
-    for elem in is_none_along_axis:
-        axis_is_none = elem
-        if axis_is_none == True:
-            axises.append([None] * size)
-        else:
-            low, high = elem
-            axises.append(np.random.uniform(low, high, size))
-
-    return np.array(np.vstack(axises))
+    return np.array(ret)
 
 
 def ranges2distribution(
@@ -68,13 +60,15 @@ def ranges2distribution(
     """
 
     args = [ralpha, rbeta, rcorner_x, rcorner_y, rcoffset]
-    print(args)
     low = [elem[0] for elem in args]
     high = [elem[1] for elem in args]
     size = (len(args),)
 
     ret = np.array(
-        [np.random.uniform(low=low, high=high, size=size) for _ in range(nsamples)]
+        [
+            single_uniform_dispatchNone(low=low, high=high, size=size)
+            for _ in range(nsamples)
+        ]
     )
 
     return ret
