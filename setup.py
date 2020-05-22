@@ -10,7 +10,7 @@ scipy==1.4.1
 tqdm==4.19.5
 PyYAML==5.3.1"""
 
-scripts=glob.glob("./src/crystfeler/sh/*er") + glob.glob("./src/crystfeler/py/*"),
+scripts=glob.glob("./src/sh/*er") + glob.glob("./src/py/*"),
 print(scripts)
 
 setup(
@@ -20,6 +20,6 @@ setup(
     author="Egor Marin",
     author_email="marin@phystech.edu",
     install_requires=requirements.split("\n"),  # external packages as dependencies
-    scripts=glob.glob("./src/crystfeler/sh/*er") + glob.glob("./src/crystfeler/py/*"),
+    scripts=glob.glob("./src/sh/*er") + glob.glob("./src/py/*"),
 )
  
