@@ -12,7 +12,6 @@ from scipy.spatial.transform import Rotation as R
 
 def angles2matrix(ss_line: str, fs_line: str):
 
-    print(fs_line, ss_line)
     fs_line = f"{fs_line} + 0.0z" if "z" not in fs_line else fs_line
     ss_line = f"{ss_line} + 0.0z" if "z" not in ss_line else ss_line
 
@@ -76,7 +75,6 @@ def read_geom_to_dict(input_geom) -> dict:
                         value = np.float(value)
                     ret[key] = value
 
-    print(ret)
     M = angles2matrix(ret["ss"], ret["fs"])
     ret["M"] = M
 
