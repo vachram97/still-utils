@@ -14,6 +14,29 @@ from angles2geom import (
 )  # pylint: disable-all
 
 
+def uniform_dispatchNone(low, high, size):
+    """
+    uniform_dispatchNone allows one to extend np.random.uniform and accept None as sampling margin (returning None)
+    """
+    assert len(size) == 1
+    size = size[0]  # dirty, but assertion above makes it work
+    is_none_along_axis = [
+        True if low[i] is None or high[i] is None else (low[i], high[i])
+        for i, _ in enumerate(zip(low, high))
+    ]
+
+    axises = []
+    for elem in is_none_along_axis:
+        axis_is_none = elem
+        if axis_is_none == True:
+            axises.append([None] * size)
+        else:
+            low, high = elem
+            axises.append(np.random.uniform(low, high, size))
+
+    return np.array(np.vstack(axises))
+
+
 def ranges2distribution(
     nsamples: int,
     ralpha=(0.0, 0.0),
@@ -45,6 +68,7 @@ def ranges2distribution(
     """
 
     args = [ralpha, rbeta, rcorner_x, rcorner_y, rcoffset]
+    print(args)
     low = [elem[0] for elem in args]
     high = [elem[1] for elem in args]
     size = (len(args),)
@@ -115,21 +139,15 @@ def main(args):
         "--rbeta", type=str, default="0.0 0.0", help="Range for beta (in degrees)"
     )
     parser.add_argument(
-        "--rcorner_x",
-        type=str,
-        default="0.0 0.0",
-        help="Range for corner_x (in pixels)",
+        "--rcorner_x", type=str, default=None, help="Range for corner_x (in pixels)",
     )
     parser.add_argument(
-        "--rcorner_y",
-        type=str,
-        default="0.0 0.0",
-        help="Range for corner_y (in pixels)",
+        "--rcorner_y", type=str, default=None, help="Range for corner_y (in pixels)",
     )
     parser.add_argument(
         "--rcoffset",
         type=str,
-        default="0.0 0.0",
+        default=None,
         help="Range for coffset (in meters, as in geometry file)",
     )
 
@@ -145,14 +163,29 @@ def main(args):
     parser.add_argument("--folder", type=str, help="Output folder to put geoms in")
 
     args = parser.parse_args()
+    ralpha = list(map(float, args.ralpha.split()))
+    rbeta = list(map(float, args.rbeta.split()))
+
+    if args.rcorner_x is None:
+        rcorner_x = (None, None)
+    else:
+        rcorner_x = list(map(float, args.rcorner_x.split()))
+    if args.rcorner_y is None:
+        rcorner_y = (None, None)
+    else:
+        rcorner_y = list(map(float, args.rcorner_y.split()))
+    if args.rcoffset is None:
+        rcoffset = (None, None)
+    else:
+        rcoffset = list(map(float, args.rcoffset.split()))
 
     distribution = ranges2distribution(
         nsamples=args.nsamples,
-        ralpha=list(map(float, args.ralpha.split())),
-        rbeta=list(map(float, args.rbeta.split())),
-        rcorner_x=list(map(float, args.rcorner_x.split())),
-        rcorner_y=list(map(float, args.rcorner_y.split())),
-        rcoffset=list(map(float, args.rcoffset.split())),
+        ralpha=ralpha,
+        rbeta=rbeta,
+        rcorner_x=rcorner_x,
+        rcorner_y=rcorner_y,
+        rcoffset=rcoffset,
     )
     distribution2geomfiles(
         input_geometry=args.input_file,
