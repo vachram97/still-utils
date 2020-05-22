@@ -1,0 +1,21 @@
+#!/bin/bash
+
+GEOMS_FOLDER="$1"
+YAML_FILE="$2"
+
+if [[ ${GEOMS_FOLDER} == "-h" ]]; then
+	echo "Simple usage: ./scanner centersearch_1 geomscan.yaml"
+	exit 0;
+fi
+
+for geom in ${GEOMS_FOLDER}/*.geom; do
+	GEOM_BASE="$(basename ${geom} .geom)"
+	YAML_UPD="${GEOMS_FOLDER}/${GEOM_BASE}.yaml"
+	cp "${YAML_FILE}" "${YAML_UPD}"
+
+	echo "GEOM: ${geom}" >> "${YAML_UPD}"
+	echo "PROJECT_NAME: ${GEOMS_FOLDER}" >> "${YAML_UPD}"
+	echo "Submitted ${YAML_UPD}"
+	runner "${YAML_UPD}" &> /dev/null
+done | tqdm | wc -l
+
