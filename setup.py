@@ -10,7 +10,7 @@ scipy==1.4.1
 tqdm==4.19.5
 PyYAML==5.3.1"""
 
-scripts = glob.glob("./src/sh/*er") + glob.glob("./src/py/*")
+scripts = glob.glob("./crystfeler/sh/*er") + glob.glob("./crystfeler/py/*")
 
 setup(
     name="crystfeler",
