@@ -65,6 +65,9 @@ create_variables() {
 }
 #--------------------------------------------------------------------------
 
+# SLURM parameters
+SLURM_HEADER_FILE="slurm.header"
+SLURM_SETUP="module load apps/crystfel-0.8.0"
 
 time=$(date "+%Y_%m_%d_%H_%M_%S")
 for var in "$@"; do
@@ -78,9 +81,6 @@ if ! [[ ${GEOM::1} == "/" ]]; then GEOM="${PWD}/${GEOM}"; fi
 if ! [[ ${CELL::1} == "/" ]]; then CELL="${PWD}/${CELL}"; fi
 if ! [[ ${LST::1} == "/" ]]; then LST="${PWD}/${LST}"; fi
 
-# SLURM parameters
-SLURM_HEADER_FILE="slurm.header"
-SLURM_SETUP="module load apps/crystfel-0.8.0"
 
 
 # Essential folders
