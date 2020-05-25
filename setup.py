@@ -8,6 +8,7 @@ rmsd==1.3.2
 h5py==2.10.0
 scipy==1.4.1
 tqdm==4.19.5
+filelock==3.0.12
 PyYAML==5.3.1"""
 
 scripts = glob.glob("./crystfeler/sh/*er") + glob.glob("./crystfeler/py/*")
