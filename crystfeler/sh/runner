@@ -112,12 +112,14 @@ ${OTHERPARAMS}"
 touch "streams/${PROJECT_NAME}_${time}.stream"
 ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
 if [[ "${SLURM}" == "1" ]]; then
+	NLINES_INPUT="$(wc -l ${LST} | awk '{print $1}')"
+	NTASKS=$(python -c "print(${NLINES_INPUT}/${NUM_WORKERS}/${CPULINES} + 1)")
+
 	# Divide initial list into separate lists for each job
-	NLINES_INPUT="$(wc -l ${LST})"
 	split --numeric-suffixes=1 \
 		--additional-suffix=".lst" \
 		--suffix-length=4 \
-		--lines=${SLURMLINES} \
+		--lines=${CPULINES} \
 		"${LST}" "${CURRENT_LOGDIR}/list_"
 
 	# print headers to each worker
@@ -130,6 +132,8 @@ if [[ "${SLURM}" == "1" ]]; then
 		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}_w${worker_num}" >> ${current_worker}
 		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_${worker_num}.log" >> ${current_worker}
 		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${worker_num}.log" >> ${current_worker}
+		echo "#SBATCH --ntasks=${NTASKS}" >> ${current_worker}
+		echo "#SBATCH --cpus-per-task=1" >> ${current_worker}
 		echo >> "${current_worker}"
 		echo "${SLURM_SETUP}" >> "${current_worker}"
 		echo >> "${current_worker}"
@@ -159,7 +163,7 @@ if [[ "${SLURM}" == "1" ]]; then
 
 	done
 
-	sbatch-ing workers
+	# sbatch-ing workers
 	for worker in "${CURRENT_LOGDIR}/worker_"*; do
 		sbatch "${worker}"
 	done
