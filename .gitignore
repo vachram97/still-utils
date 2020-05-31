@@ -19,3 +19,9 @@ test
 # Python stuff
 __pycache__
 .vscode
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.lz4
