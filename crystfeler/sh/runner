@@ -114,19 +114,11 @@ ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
 if [[ "${SLURM}" == "1" ]]; then
 	# Divide initial list into separate lists for each job
 	NLINES_INPUT="$(wc -l ${LST})"
-	if [[ "${NLINES_INPUT}" < "${SLURMLINES}" ]]; then
-		split --numeric-suffixes=1 \
-			--additional-suffix=".lst" \
-			--suffix-length=4 \
-			--number=l/${SLURMJOBS} \
-			"${LST}" "${CURRENT_LOGDIR}/list_"
-	else
-		split --numeric-suffixes=1 \
-			--additional-suffix=".lst" \
-			--suffix-length=4 \
-			--lines=${SLURMLINES} \
-			"${LST}" "${CURRENT_LOGDIR}/list_"
-	fi
+	split --numeric-suffixes=1 \
+		--additional-suffix=".lst" \
+		--suffix-length=4 \
+		--lines=${SLURMLINES} \
+		"${LST}" "${CURRENT_LOGDIR}/list_"
 
 	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
 		dummy="$(basename "${current_lst}" .lst)"
