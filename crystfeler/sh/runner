@@ -120,38 +120,50 @@ if [[ "${SLURM}" == "1" ]]; then
 		--lines=${SLURMLINES} \
 		"${LST}" "${CURRENT_LOGDIR}/list_"
 
-	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
-		dummy="$(basename "${current_lst}" .lst)"
-		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in split above
-		current_stream=${CURRENT_LOGDIR}/stream_${current_idx}.stream
-		current_worker=${CURRENT_LOGDIR}/worker_${current_idx}.sh
+	# print headers to each worker
+	for worker_num in $(seq 1 ${NUM_WORKERS}); do
+		# here echo header
+		current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
 		cat ${SLURM_HEADER_FILE} >> "${current_worker}"
 
 		echo "#SBATCH --chdir ${CURRENT_LOGDIR}" >> "${current_worker}" >> ${current_worker}
-		echo "#SBATCH --job-name ${PROJECT_NAME}-${current_idx}" >> ${current_worker}
-		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_${current_idx}.log" >> ${current_worker}
-		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${current_idx}.log" >> ${current_worker}
+		echo "#SBATCH --job-name ${PROJECT_NAME: 6}-w${worker_num}" >> ${current_worker}
+		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_${worker_num}.log" >> ${current_worker}
+		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${worker_num}.log" >> ${current_worker}
 		echo >> "${current_worker}"
-
 		echo "${SLURM_SETUP}" >> "${current_worker}"
+		echo >> "${current_worker}"
+	done
 
+	# writing multiple-worker execution strings
+	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
+		dummy="$(basename "${current_lst}" .lst)"
+		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
+		worker_num=$((${current_idx}%${NUM_WORKERS}))
+		current_stream=${CURRENT_LOGDIR}/stream_${current_idx}.stream
+		current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
 
 		# now writing the execution string itself
 		EXECSTRING="${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
 		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 		EXECSTRING="${EXECSTRING} -j ${NPROC}"  # this will use the `nproc` value on host machine
 
-		echo "touch ${current_stream}" >> "${current_worker}"
-		echo "tail -f ${current_stream} --pid=\$\$ | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream &" >> "${current_worker}"
+		# echo "touch ${current_stream}" >> "${current_worker}"
+		# echo "tail -f ${current_stream} --pid=\$\$ | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream &" >> "${current_worker}"
 
-		echo "$EXECSTRING" >> "${current_worker}"
+		echo "$EXECSTRING &" >> "${current_worker}"
 		# echo "cat ${current_stream} | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream.final" >> "${current_worker}"
 
 		# targz partial streams to save some space
-		echo "tar fcz ${current_stream}.tar.gz ${current_stream} --absolute-names" >> "${current_worker}"
+		# echo "tar fcz ${current_stream}.tar.gz ${current_stream} --absolute-names" >> "${current_worker}"
 
-		sbatch "${current_worker}"
 	done
+
+	# sbatch-ing workers
+	for worker in "${CURRENT_LOGDIR}/worker_"*; do
+		sbatch "${worker}"
+	done
+
 	echo "tail -f ${CURRENT_LOGDIR}/stderr_*.log"
 
 else
