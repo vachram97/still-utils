@@ -127,7 +127,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		cat ${SLURM_HEADER_FILE} >> "${current_worker}"
 
 		echo "#SBATCH --chdir ${CURRENT_LOGDIR}" >> "${current_worker}" >> ${current_worker}
-		echo "#SBATCH --job-name ${PROJECT_NAME: 6}-w${worker_num}" >> ${current_worker}
+		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}_w${worker_num}" >> ${current_worker}
 		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_${worker_num}.log" >> ${current_worker}
 		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${worker_num}.log" >> ${current_worker}
 		echo >> "${current_worker}"
@@ -139,7 +139,7 @@ if [[ "${SLURM}" == "1" ]]; then
 	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
 		dummy="$(basename "${current_lst}" .lst)"
 		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
-		worker_num=$((${current_idx}%${NUM_WORKERS}))
+		worker_num=$((${worker_num}%${NUM_WORKERS}+1))
 		current_stream=${CURRENT_LOGDIR}/stream_${current_idx}.stream
 		current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
 
@@ -159,7 +159,7 @@ if [[ "${SLURM}" == "1" ]]; then
 
 	done
 
-	# sbatch-ing workers
+	sbatch-ing workers
 	for worker in "${CURRENT_LOGDIR}/worker_"*; do
 		sbatch "${worker}"
 	done
