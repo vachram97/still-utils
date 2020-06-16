@@ -1,7 +1,7 @@
 #!/bin/bash
 exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
-exec 1> >(tee /tmp/analyzer.log) 
+exec 1> >(tee /tmp/analyzer.log)
 
 # Example here: https://github.com/marinegor/still-utils/blob/master/peaks2json.py
 # TODO: add per-run percent of indexed images
@@ -104,12 +104,12 @@ RATE=""
 NPROC=$(nproc)
 LOGS=""
 CLEANUP=1
-HISTOGRAMS=""  # TODO: add BINS and other histogram plotting parameters
+HISTOGRAMS="" # TODO: add BINS and other histogram plotting parameters
 #---------
 LOWRES=""
 HIGHRES=""
 SYMMETRY=""
-PUSHRES="" 
+PUSHRES=""
 HIGHRES_INCLUDE=""
 MIN_CC=""
 ITERATIONS=""
@@ -124,131 +124,131 @@ FIRST=""
 while [[ $# -gt 0 ]]; do
 	key="$1"
 	# echo "..Current argument is ${key}"
-	case "$key" in 
-		-h|--help)
-			echo "${HELP_STRING}";
-			exit 0
-	shift
-	;;
+	case "$key" in
+	-h | --help)
+		echo "${HELP_STRING}"
+		exit 0
+		shift
+		;;
 		#----------------------------------------
-	-i|--input)
-			if ! [ -f "$3" ]; then
-				echo "Single-stream mode"
+	-i | --input)
+		if ! [ -f "$3" ]; then
+			echo "Single-stream mode"
 			INPUT="$2"
+			shift
+		else
+			num_streams=0
+			if [ -f "tmp.stream" ]; then
+				echo "Removing tmp.stream"
+				rm "tmp.stream"
+			fi
+			while [ -f "$2" ]; do
+				echo "    ...using $2 as part of input file"
+				cat "$2" >>'tmp.stream'
+				let num_streams="$num_streams"+1
 				shift
-			else
-				num_streams=0
-				if [ -f "tmp.stream" ]; then 
-					echo "Removing tmp.stream" 
-					rm "tmp.stream"
-			fi
-				while [ -f "$2" ]; do
-					echo "    ...using $2 as part of input file"
-					cat "$2" >> 'tmp.stream'
-					let num_streams="$num_streams"+1
-					shift
-				done
-				echo "Multi-stream mode, $num_streams streams"
-				INPUT="tmp.stream";
-			fi
-	;; # there is no shift here for correct multi-stream input
+			done
+			echo "Multi-stream mode, $num_streams streams"
+			INPUT="tmp.stream"
+		fi
+		;; # there is no shift here for correct multi-stream input
 	#----------------------------------------
-	-p |--cell)
-			CELL="$2"
-	shift
-	;;
-	#---------------------------------------- #
-		--merging)
-			MERGING="$2"
-			if [[ "$MERGING" != "none" ]] && [[ "$MERGING" != "partialator" ]] && [[ "$MERGING" != "process_hkl" ]]; then
-				echo "MERGING parameter should be either 'none' or 'process_hkl' or 'partialator'"; exit 1
-			fi
-	shift
-	;;
-	#----------------------------------------
-		--rate)
-			RATE="TRUE"
-	;;
-	#----------------------------------------
-		--nproc|-j)
-			NPROC="$2"
-	shift
-	;;
-	#----------------------------------------
-		--logs)
-			LOGS="$2"
-	shift
-	;;
-	#----------------------------------------
-		--histograms)
-			HISTOGRAMS="$2"
-	shift
-	;;
-	#----------------------------------------
-		--cleanup)
-			CLEANUP="$2"
-	shift
-	;;
-	#----------------------------------------
-		--lowres)
-			LOWRES="$2"
-	shift
-	;;
-	#----------------------------------------
-		--highres)
-			HIGHRES="$2"
-	shift
-	;;
-	#---------------------------------------- 
-		--pushres)
-			PUSHRES="$2"
-	shift
-	;;
-	#----------------------------------------
-		--iterations)
-			ITERATIONS="$2"
-	shift
-	;;
-	#----------------------------------------
-		--highres_include)
-			HIGHRES_INCLUDE="$2"
-	shift
-	;;
-	#----------------------------------------
-		--multi_rmsd)
-			MULTI_RMSD="$2"
-	shift
-	;;
-	#----------------------------------------
-		--min_cc)
-			MIN_CC="$2"
-	shift
-	;;
-	#----------------------------------------
-		--string_params)
-			STRING_PARAMS="$2"
-	shift
-	;;
-	#----------------------------------------
-		--model)
-			MODEL="$2"
-	shift
-	;;
-	#----------------------------------------
-		--symmetry|-y)
-			SYMMETRY="$2"
-	shift
-	;;
-	#----------------------------------------
-		--first)
-			FIRST="$2"
-	shift
-	;;
-	#----------------------------------------
+	-p | --cell)
+		CELL="$2"
+		shift
+		;;
+		#---------------------------------------- #
+	--merging)
+		MERGING="$2"
+		if [[ "$MERGING" != "none" ]] && [[ "$MERGING" != "partialator" ]] && [[ "$MERGING" != "process_hkl" ]]; then
+			echo "MERGING parameter should be either 'none' or 'process_hkl' or 'partialator'"
+			exit 1
+		fi
+		shift
+		;;
+		#----------------------------------------
+	--rate)
+		RATE="TRUE"
+		;;
+		#----------------------------------------
+	--nproc | -j)
+		NPROC="$2"
+		shift
+		;;
+		#----------------------------------------
+	--logs)
+		LOGS="$2"
+		shift
+		;;
+		#----------------------------------------
+	--histograms)
+		HISTOGRAMS="$2"
+		shift
+		;;
+		#----------------------------------------
+	--cleanup)
+		CLEANUP="$2"
+		shift
+		;;
+		#----------------------------------------
+	--lowres)
+		LOWRES="$2"
+		shift
+		;;
+		#----------------------------------------
+	--highres)
+		HIGHRES="$2"
+		shift
+		;;
+		#----------------------------------------
+	--pushres)
+		PUSHRES="$2"
+		shift
+		;;
+		#----------------------------------------
+	--iterations)
+		ITERATIONS="$2"
+		shift
+		;;
+		#----------------------------------------
+	--highres_include)
+		HIGHRES_INCLUDE="$2"
+		shift
+		;;
+		#----------------------------------------
+	--multi_rmsd)
+		MULTI_RMSD="$2"
+		shift
+		;;
+		#----------------------------------------
+	--min_cc)
+		MIN_CC="$2"
+		shift
+		;;
+		#----------------------------------------
+	--string_params)
+		STRING_PARAMS="$2"
+		shift
+		;;
+		#----------------------------------------
+	--model)
+		MODEL="$2"
+		shift
+		;;
+		#----------------------------------------
+	--symmetry | -y)
+		SYMMETRY="$2"
+		shift
+		;;
+		#----------------------------------------
+	--first)
+		FIRST="$2"
+		shift
+		;;
+		#----------------------------------------
 	esac
 	shift # past argument or value
 done
-
 
 ################################################
 # CHECKING THAT ALL INPUT PARAMETERS ARE VALID #
@@ -256,7 +256,8 @@ done
 
 # check validity of INPUT
 if ! [[ -f "$INPUT" ]]; then
-	echo -e "\e[31mError:\e[0m input file <${INPUT}> not found"; exit 1
+	echo -e "\e[31mError:\e[0m input file <${INPUT}> not found"
+	exit 1
 fi
 
 # check validity of LOGS
@@ -267,7 +268,10 @@ if [[ "${LOGS}" == "" ]]; then
 	LOGS="logs/analyzer.${HASH}.$(date +%F-%H-%M-%S)"
 	mkdir -p "${LOGS}"
 else
-	if [[ -d "$LOGS" ]]; then echo -e "\e[31mError:\e[0m folder <${LOGS}> exist, will not proceed"; exit 1; fi
+	if [[ -d "$LOGS" ]]; then
+		echo -e "\e[31mError:\e[0m folder <${LOGS}> exist, will not proceed"
+		exit 1
+	fi
 	mkdir -p "$LOGS"
 fi
 
@@ -276,11 +280,11 @@ if ! [[ -f "$CELL" ]]; then
 	echo -e "\e[33mWarning:\e[0m could not access cell <${CELL}> (or you did not provide it), please check access right and/or folder structure"
 	echo -e "\e[33mWarning:\e[0m will proceed using cell from the stream"
 	if [[ -f ./extract_cell.py ]]; then
-		./extract_cell.py ${INPUT} > "${LOGS}/input.cell"
+		./extract_cell.py ${INPUT} >"${LOGS}/input.cell"
 		echo -e "\e[33mWarning:\e[0m using cell ${LOGS}/input.cell -- check if it's correct"
 		CELL="${LOGS}/input.cell"
-	elif command -v extract_cell.py 2 >/dev/null;  then
-		extract_cell.py ${INPUT} > "${LOGS}/input.cell"
+	elif command -v extract_cell.py 2 >/dev/null; then
+		extract_cell.py ${INPUT} >"${LOGS}/input.cell"
 		echo -e "\e[33mWarning:\e[0m using cell ${LOGS}/input.cell -- check if it's correct"
 		CELL="${LOGS}/input.cell"
 	else
@@ -293,58 +297,78 @@ fi
 
 # check validity of NPROC
 is_integer='^[0-9]+$'
-if ! [[ ${NPROC} =~ $is_integer ]] ; then
-	echo "Erorr: NPROC should be a valid number, now <${NPROC}>"; exit 1; fi
+if ! [[ ${NPROC} =~ $is_integer ]]; then
+	echo "Erorr: NPROC should be a valid number, now <${NPROC}>"
+	exit 1
+fi
 if [ "${NPROC}" -gt "$(nproc)" ]; then
-	echo -e "\e[31mError:\e[0m NPROC should be less or equal than maximum available $(nproc)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m NPROC should be less or equal than maximum available $(nproc)"
+	exit 1
+fi
 if [ "${NPROC}" -lt 1 ]; then
-	echo -e "\e[33mWarning:\e[0m will use all available processors, since you provided ${NPROC} < 1"; fi
+	echo -e "\e[33mWarning:\e[0m will use all available processors, since you provided ${NPROC} < 1"
+fi
 
 # check validity of HISTOGRAMS
-if  [[ "${HISTOGRAMS}" == "" ]]; then
+if [[ "${HISTOGRAMS}" == "" ]]; then
 	echo -e "\e[33mWarning:\e[0m will use HISTOGRAMS=0 (do not plot histograms) by default"
 	HISTOGRAMS="0"
 elif [[ "${HISTOGRAMS}" == "1" ]] || [[ "${HISTOGRAMS}" == "0" ]]; then
 	:
 else
-	echo -e "\e[31mError:\e[0m HISTOGRAMS should be either '1' or '0', you provided <${HISTOGRAMS}>."; 
-	exit 1; 
+	echo -e "\e[31mError:\e[0m HISTOGRAMS should be either '1' or '0', you provided <${HISTOGRAMS}>."
+	exit 1
 fi
 
-
 # check validity of CLEANUP
-if  [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
-	echo -e "\e[31mError:\e[0m CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."; exit 1; fi
+if [ "$CLEANUP" -ne 1 ] && [ "$CLEANUP" -ne 0 ]; then
+	echo -e "\e[31mError:\e[0m CLEANUP should be either 1 or 0, you provided <${CLEANUP}>."
+	exit 1
+fi
 
 # check validity of LOWRES and HIGHRES
 is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${LOWRES} == "" ]]; then
 	echo -e "\e[33mWarning:\e[0m LOWRES will be 30.0 by default"
-	LOWRES=30.0; fi
+	LOWRES=30.0
+fi
 if [[ ${HIGHRES} == "" ]]; then
 	echo -e "\e[33mWarning:\e[0m HIGHRES will be 3.0 by default"
-	HIGHRES=3.0; fi
+	HIGHRES=3.0
+fi
 if ! [[ ${LOWRES} =~ $is_float_positive ]]; then
-	echo -e "\e[31mError:\e[0m LOWRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m LOWRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"
+	exit 1
+fi
 if ! [[ ${HIGHRES} =~ $is_float_positive ]]; then
-	echo -e "\e[31mError:\e[0m HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"
+	exit 1
+fi
 if [[ $(python -c "print(${HIGHRES}>=${LOWRES})") == "True" ]]; then
 	echo -e "\e[31mError:\e[0m HIGHRES >= LOWRES"
-	exit 1; fi
+	exit 1
+fi
 
 # check validity of PUSHRES
 is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${PUSHRES} == "" ]]; then
-	echo -e "\e[33mWarning:\e[0m will use default PUSHRES=1.0"; PUSHRES=1.0; fi
+	echo -e "\e[33mWarning:\e[0m will use default PUSHRES=1.0"
+	PUSHRES=1.0
+fi
 if ! [[ ${PUSHRES} =~ $is_float_positive ]]; then
-	echo -e "\e[31mError:\e[0m PUSHRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m PUSHRES should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"
+	exit 1
+fi
 
 # check validity of ITERATIONS
 is_integer='^[0-9]+$'
 if [[ ${ITERATIONS} == "" ]]; then
-	echo -e "\e[33mWarning:\e[0m will use default ITERATIONS=0"; ITERATIONS=0; fi
+	echo -e "\e[33mWarning:\e[0m will use default ITERATIONS=0"
+	ITERATIONS=0
+fi
 if ! [[ ${ITERATIONS} =~ $is_integer ]]; then
-	echo -e "\e[31mError:\e[0m ITERATIONS should be valid integer number, e.g. 3 (but '03' or '3.' would be invalid)"; exit 1; 
+	echo -e "\e[31mError:\e[0m ITERATIONS should be valid integer number, e.g. 3 (but '03' or '3.' would be invalid)"
+	exit 1
 elif [ ${ITERATIONS} -ge 3 ]; then
 	echo -e "\e[33mWarning:\e[0m are you sure ITERATIONS should be more than 2? It may cause unstable merging and scaling"
 fi
@@ -352,62 +376,84 @@ fi
 # check validity of HIGHRES_INCLUDE
 is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${HIGHRES_INCLUDE} == "" ]]; then
-	echo -e "\e[33mWarning:\e[0m will use default HIGHRES_INCLUDE=100.0 (basically, include all possible resolutions)"; 
-	HIGHRES_INCLUDE=100.0; 
+	echo -e "\e[33mWarning:\e[0m will use default HIGHRES_INCLUDE=100.0 (basically, include all possible resolutions)"
+	HIGHRES_INCLUDE=100.0
 fi
 if ! [[ ${HIGHRES_INCLUDE} =~ $is_float_positive ]]; then
-	echo -e "\e[31mError:\e[0m HIGHRES_INCLUDE should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m HIGHRES_INCLUDE should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"
+	exit 1
+fi
 
 # check validity of MULTI_RMSD
 is_float_positive='^[0-9]*\.[0-9]*$'
 if [[ ${MULTI_RMSD} == "" ]]; then
-	echo -e "\e[33mWarning:\e[0m will use default MULTI_RMSD=5.0 degrees"; MULTI_RMSD=5.0; fi
+	echo -e "\e[33mWarning:\e[0m will use default MULTI_RMSD=5.0 degrees"
+	MULTI_RMSD=5.0
+fi
 if ! [[ ${MULTI_RMSD} =~ $is_float_positive ]]; then
-	echo -e "\e[31mError:\e[0m MULTI_RMSD should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m MULTI_RMSD should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"
+	exit 1
+fi
 if [[ $(python -c "print(${MULTI_RMSD}>30)") == "True" ]]; then
-	echo -e "\e[33mWarning:\e[0m are you sure you want your MULTI_RMSDs be that large? It may give unreasonably high false multiples number"; fi
+	echo -e "\e[33mWarning:\e[0m are you sure you want your MULTI_RMSDs be that large? It may give unreasonably high false multiples number"
+fi
 
 # check validity of MIN_CC
 is_float='^\-{0,1}[0-9]*\.[0-9]*$'
 if [[ ${MIN_CC} == "" ]]; then
-	echo -e "\e[33mWarning:\e[0m will use default MIN_CC=-1.0"; MIN_CC=-1.0; fi
+	echo -e "\e[33mWarning:\e[0m will use default MIN_CC=-1.0"
+	MIN_CC=-1.0
+fi
 if ! [[ ${MIN_CC} =~ $is_float ]]; then
 	echo "$MIN_CC"
-	echo -e "\e[31mError:\e[0m MIN_CC should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"; exit 1; fi
+	echo -e "\e[31mError:\e[0m MIN_CC should be valid float number, e.g. 3.0 (but '03.0' would be invalid)"
+	exit 1
+fi
 if [[ $(python -c "print(${MIN_CC}>1.0)") == "True" ]] || [[ $(python -c "print(${MIN_CC}<-1.0)") == "True" ]]; then
-	echo -e "\e[31mError:\e[0m |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"; exit 1; fi
+	echo -e "\e[31mError:\e[0m |MIN_CC| <= 1 is not valid for your MIN_CC=${MIN_CC}"
+	exit 1
+fi
 
 # check validity of MODEL
 if [[ ${MERGING} == "partialator" ]]; then
 	if [[ ${MODEL} == "" ]]; then
-		echo -e "\e[33mWarning:\e[0m will use 'unity' model by default"; MODEL="unity"; fi
+		echo -e "\e[33mWarning:\e[0m will use 'unity' model by default"
+		MODEL="unity"
+	fi
 
 	if ! [[ ${MODEL} == "unity" ]] && ! [[ ${MODEL} == "xsphere" ]]; then
-		echo -e "\e[31mError:\e[0m MODEL should be either 'unity' or 'xsphere'"; exit 1; fi
+		echo -e "\e[31mError:\e[0m MODEL should be either 'unity' or 'xsphere'"
+		exit 1
+	fi
 fi
 
 # check validity of SYMMETRY
 if ! [[ ${MERGING} == "none" ]]; then
 	if [[ ${SYMMETRY} == "" ]]; then
-	echo -e "\e[31mError:\e[0m you must provide SYMMETRY instead of <${SYMMETRY}>, if you do merging"; exit 1; fi
+		echo -e "\e[31mError:\e[0m you must provide SYMMETRY instead of <${SYMMETRY}>, if you do merging"
+		exit 1
+	fi
 fi
-
 
 # check validity of RATE
 if [[ "$RATE" == "TRUE" ]]; then
 	if [[ ${CELL} == "" ]]; then
-		echo -e "\e[31mError:\e[0m you must provide valid cell file"; exit 1
+		echo -e "\e[31mError:\e[0m you must provide valid cell file"
+		exit 1
 	elif ! [[ -f ${CELL} ]]; then
-		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided does not exist"; exit 1
-	elif [[ $(wc -l < ${CELL}) -lt 6 ]]; then
-		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided has less than 6 lines and thereby is probably empty"; exit 1
+		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided does not exist"
+		exit 1
+	elif [[ $(wc -l <${CELL}) -lt 6 ]]; then
+		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided has less than 6 lines and thereby is probably empty"
+		exit 1
 	fi
 fi
 
 # check validity of FIRST
 is_integer='^[0-9]+$'
 if [[ "$FIRST" != "" ]] && ! [[ "$FIRST" =~ $is_integer ]]; then
-	echo -e "\e[31mError:\e[0m number of first N images to merge should be integer"; exit 1
+	echo -e "\e[31mError:\e[0m number of first N images to merge should be integer"
+	exit 1
 fi
 
 #----------------------------------------------------------------------------------------------
@@ -419,51 +465,51 @@ function rate() {
 	echo "Wait, rating is in progress..."
 
 	# outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
-    HKL_TEMPLATE="$1"
+	HKL_TEMPLATE="$1"
 	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
 	FOMS=("rsplit" "cc" "ccstar")
-	touch "${LOGS}/execution.log" &> /dev/null
-	
+	touch "${LOGS}/execution.log" &>/dev/null
+
 	# do per-shell stats.dat
 	for fom in "${FOMS[@]}"; do
 		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 10 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}.log"
-		echo "${STRING}" >> "${LOGS}/execution.log"
+		echo "${STRING}" >>"${LOGS}/execution.log"
 		eval "${STRING}"
 		mv shells.dat "${LOGS}/shells_${fom}.dat"
 	done
 	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 10 &> ${LOGS}/check_hkl.log"
-	echo "${STRING}" >> "${LOGS}/execution.log"
+	echo "${STRING}" >>"${LOGS}/execution.log"
 	eval "${STRING}"
 	mv shells.dat "${LOGS}/check_hkl.dat"
 
 	# do whole-resolution
 	for fom in "${FOMS[@]}"; do
 		STRING="compare_hkl ${HKL_TEMPLATE}1 ${HKL_TEMPLATE}2 ${COMPARE_HKL_PARAMS} --nshells 1 --fom ${fom} &> ${LOGS}/compare_hkl_${fom}_full.log"
-		echo "${STRING}" >> "${LOGS}/execution.log"
+		echo "${STRING}" >>"${LOGS}/execution.log"
 		eval "${STRING}"
-		mv shells.dat "${LOGS}/shells_${fom}_full.dat" &> /dev/null
+		mv shells.dat "${LOGS}/shells_${fom}_full.dat" &>/dev/null
 	done
 	STRING="check_hkl ${HKL_TEMPLATE} ${COMPARE_HKL_PARAMS} --nshells 1 &> ${LOGS}/check_hkl_full.log"
-	echo "${STRING}" >> "${LOGS}/execution.log"
+	echo "${STRING}" >>"${LOGS}/execution.log"
 	eval "${STRING}"
-	mv shells.dat "${LOGS}/check_hkl_full.dat" &> /dev/null
+	mv shells.dat "${LOGS}/check_hkl_full.dat" &>/dev/null
 
 	# merge all together
 
 	paste "${LOGS}/check_hkl.dat" \
-		<(awk '{print $3}' "${LOGS}/shells_rsplit.dat" ) \
-		<(awk '{print $3}' "${LOGS}/shells_cc.dat"     ) \
-		<(awk '{print $3}' "${LOGS}/shells_ccstar.dat" ) | head -n 1 >> "${LOGS}/overall_stats.csv"
+		<(awk '{print $3}' "${LOGS}/shells_rsplit.dat") \
+		<(awk '{print $3}' "${LOGS}/shells_cc.dat") \
+		<(awk '{print $3}' "${LOGS}/shells_ccstar.dat") | head -n 1 >>"${LOGS}/overall_stats.csv"
 	paste "${LOGS}/check_hkl.dat" \
-		<(awk '{print $2}' "${LOGS}/shells_rsplit.dat" ) \
-		<(awk '{print $2}' "${LOGS}/shells_cc.dat"     ) \
-		<(awk '{print $2}' "${LOGS}/shells_ccstar.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
-    echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" \
-		>> "${LOGS}/overall_stats.csv"
+		<(awk '{print $2}' "${LOGS}/shells_rsplit.dat") \
+		<(awk '{print $2}' "${LOGS}/shells_cc.dat") \
+		<(awk '{print $2}' "${LOGS}/shells_ccstar.dat") | tail -n+2 >>"${LOGS}/overall_stats.csv"
+	echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" \
+		>>"${LOGS}/overall_stats.csv"
 	paste "${LOGS}/check_hkl_full.dat" \
-		<(awk '{print $2}' "${LOGS}/shells_rsplit_full.dat" ) \
-		<(awk '{print $2}' "${LOGS}/shells_cc_full.dat"     ) \
-		<(awk '{print $2}' "${LOGS}/shells_ccstar_full.dat" ) | tail -n+2 >> "${LOGS}/overall_stats.csv"
+		<(awk '{print $2}' "${LOGS}/shells_rsplit_full.dat") \
+		<(awk '{print $2}' "${LOGS}/shells_cc_full.dat") \
+		<(awk '{print $2}' "${LOGS}/shells_ccstar_full.dat") | tail -n+2 >>"${LOGS}/overall_stats.csv"
 	cat "${LOGS}/overall_stats.csv"
 
 }
@@ -474,7 +520,7 @@ if [[ "${RATE}" == "TRUE" ]]; then
 	echo "Will only perform rating"
 	rate "$INPUT"
 	mv "/tmp/analyzer.log" "${LOGS}/analyzer.log"
-	exit 0;
+	exit 0
 fi
 
 NIMAGES=$(grep -a "Begin chunk" "$INPUT" -c)
@@ -488,16 +534,17 @@ echo "================"
 for method in "${METHODS[@]}"; do
 	if [ "$method" = "none" ]; then continue; fi
 
-	tmp="$(grep -E -c -a -w "$method" "$INPUT")"	
+	tmp="$(grep -E -c -a -w "$method" "$INPUT")"
 	let "NINDEXED=$NINDEXED+$tmp"
 	ratio=$(python3 -c "print(f'{round(${tmp}/${NIMAGES}*100,2):>7}%')")
 	echo -e "$ratio" "\t" "$tmp" "\t" "$method"
 done
 
 pythonstring='print(sum([1 for line in open("'${INPUT}'","r") if line.startswith("indexamajig") for _ in open(line.split("-i ")[1].split()[0], "r")]))'
-NIMAGES_INPUT=$(python3 -c "$pythonstring" 2> /dev/null)
+NIMAGES_INPUT=$(python3 -c "$pythonstring" 2>/dev/null)
 if [[ "$NIMAGES_INPUT" -eq "" ]]; then
-	NIMAGES_INPUT="n/a (file lists not available)"; fi 
+	NIMAGES_INPUT="n/a (file lists not available)"
+fi
 
 # 	- number of images for processing
 #	- fraction of multiple hits
@@ -510,14 +557,14 @@ echo "Number of indexed images:   ${NINDEXED}"
 echo "Number of crystals:  ${NCRYST}"
 if [[ "$NIMAGES_INPUT" != "n/a (file lists not available)" ]]; then
 	echo "Total image indexing rate:: $(python -c "print(round(100*${NINDEXED}/${NIMAGES_INPUT}.,2))") %"
-	echo "Total crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES_INPUT}.,2))") %"  
+	echo "Total crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES_INPUT}.,2))") %"
 fi
 
 if [[ $(grep -c -- '--no-non-hits-in-stream' ${INPUT}) != 0 ]]; then
-	echo -e "\e[33mWarning:\e[0m following two values are unreliable, since the stream does not contain hits with peaks less then certain value"; fi
+	echo -e "\e[33mWarning:\e[0m following two values are unreliable, since the stream does not contain hits with peaks less then certain value"
+fi
 echo "Image indexing rate: $(python -c "print(round(100*${NINDEXED}/${NIMAGES}.,2))") %"
-echo "Crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES}.,2))") %"  
-
+echo "Crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES}.,2))") %"
 
 echo "======================="
 echo "Spitting out some lists"
@@ -527,23 +574,21 @@ echo "======================="
 #	- number of indexed images (and full list)
 for method in "${METHODS[@]}"; do
 	if [[ $(grep -c "Event" ${INPUT}) -gt 3 ]]; then
-		grep "indexed_by = ${method}" ${INPUT} -B 4 | grep "Image filename\|Event" | grep "Image\|Event" | sed 'N;s/\n/ /' | awk '{print $3, $5}' > "${LOGS}/indexed_by_${method}.lst"
+		grep "indexed_by = ${method}" ${INPUT} -B 4 | grep "Image filename\|Event" | grep "Image\|Event" | sed 'N;s/\n/ /' | awk '{print $3, $5}' >"${LOGS}/indexed_by_${method}.lst"
 	else
 		grep "indexed_by = ${method}" ${INPUT} -B 3 | grep "Image filename" | grep "Image" | awk '{print $3, $5}' >"${LOGS}/indexed_by_${method}.lst"
 	fi
 	echo "Indexed by $method here:         ${LOGS}/indexed_by_${method}.lst"
 done
 
-
 # calling multilattice_validate.py (this repo)
 if [[ -f ./multilattice_validate.py ]]; then
 	./multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
-elif command -v multilattice_validate.py &> /dev/null;  then
+elif command -v multilattice_validate.py &>/dev/null; then
 	multilattice_validate.py ${INPUT} --rmsd $MULTI_RMSD --out "${LOGS}/multiples.lst"
 else
 	echo -e "\e[33mWarning:\e[0m 'multilattice_validate.py' is not in current or path, won\'t be used"
 fi
-
 
 # PART WHERE I EXECUTE EXTERNAL SCRIPTS
 #	- detector-shift -- compare shifted and non-shifted values # TODO
@@ -557,11 +602,10 @@ if [[ ${HISTOGRAMS} == "1" ]]; then
 	echo "Parameter: diffraction_resolution_limit (crystals)"
 	grep "diffraction_resolution_limit" ${INPUT} | hist.py --xmax 7.0 --column -2
 	echo "Parameter: num_peaks (only chunks with crystals)"
-	grep "num_peaks\|diffraction_resolution_limit" ${INPUT} \
-		| grep -B 1 "diffraction_resolution" \
-		| grep "num" | hist.py  --xmax 40.0 --xmin 0.0
+	grep "num_peaks\|diffraction_resolution_limit" ${INPUT} |
+		grep -B 1 "diffraction_resolution" |
+		grep "num" | hist.py --xmax 40.0 --xmin 0.0
 fi
-
 
 # PART WHERE I MERGE THE DATA
 if [[ "$MERGING" == "partialator" ]]; then
@@ -593,19 +637,18 @@ elif [[ "$MERGING" == "process_hkl" ]]; then
 ${STRING_PARAMS}"
 	if [[ ${FIRST} != "" ]]; then
 		echo "Merging with following command: ${MERGING_COMMAND} --stop-after ${FIRST} -o ${LOGS}/merged.hkl"
-		eval "${MERGING_COMMAND} --stop-after ${FIRST} -o ${LOGS}/merged.hkl"              | tee "${LOGS}/process_hkl.log"
-		eval "${MERGING_COMMAND} --stop-after $(( $FIRST / 2 )) -o ${LOGS}/merged.hkl1 --odd-only"  | tee "${LOGS}/process_hkl1.log"
-		eval "${MERGING_COMMAND} --stop-after $(( $FIRST / 2 )) -o ${LOGS}/merged.hkl2 --even-only" | tee "${LOGS}/process_hkl2.log"
+		eval "${MERGING_COMMAND} --stop-after ${FIRST} -o ${LOGS}/merged.hkl" | tee "${LOGS}/process_hkl.log"
+		eval "${MERGING_COMMAND} --stop-after $(($FIRST / 2)) -o ${LOGS}/merged.hkl1 --odd-only" | tee "${LOGS}/process_hkl1.log"
+		eval "${MERGING_COMMAND} --stop-after $(($FIRST / 2)) -o ${LOGS}/merged.hkl2 --even-only" | tee "${LOGS}/process_hkl2.log"
 	else
 		echo "Merging with following command: ${MERGING_COMMAND} -o ${LOGS}/merged.hkl"
-		eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl"              | tee "${LOGS}/process_hkl.log"
-		eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl1 --odd-only"  | tee "${LOGS}/process_hkl1.log"
+		eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl" | tee "${LOGS}/process_hkl.log"
+		eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl1 --odd-only" | tee "${LOGS}/process_hkl1.log"
 		eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl2 --even-only" | tee "${LOGS}/process_hkl2.log"
 	fi
 else
 	:
-fi	
-
+fi
 
 # PART WHERE I ACCESS THE MERGED DATA QUALITY
 if ! [[ "$MERGING" == "none" ]]; then
@@ -617,7 +660,6 @@ if ! [[ "$MERGING" == "none" ]]; then
 	fi
 	rate "${LOGS}/merged.hkl"
 fi
-
 
 ###########
 # CLEANUP #
