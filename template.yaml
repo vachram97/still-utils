@@ -1,22 +1,25 @@
 # PROJECT PARAMETERS
-PROJECT_NAME: GPCR
-NPROC: 1
+PROJECT_NAME: GPCR # name prefix for output stream
+NPROC: 1 # number of processors; valid only when SLURM=0
 
 # INPUT FILES
 GEOM: initial.geom
 CELL: initial.cell
 LST: full.lst
 
+# LIST HANDLING PARAMETERS
+SHUFFLE: 1 # whether you want to shuffle input list or not
+TOP: none  # whether you want to take first TOP images of your LST
+
 # SLURM parameters
 SLURM: 1
-CPULINES: 2
-NUM_WORKERS: 4
+CPULINES: 100 # number of lines per single CPU
+NUM_WORKERS: 4 # number of SLURM tasks to be submited
 
 # PEAK FINDING PARAMETERS
 SNR: 4.0
 THRESHOLD: 30
 HIGHRES: 2.5
-SHUFFLE: 1
 PEAKS: peakfinder8
 INDEXING: xgandalf
 MINPEAKS: 15
