@@ -93,6 +93,8 @@ Merging parameters:
 		Parameters for either process_hkl or partialator provided as a string.
 		Warning: it is your duty to make sure you provide valid parameters for
 		the tool of your choice.
+	--first
+		Will merge only first n images (using --stop-after in partialator & process_hkl)
 "
 
 INPUT=""
@@ -114,6 +116,7 @@ ITERATIONS=""
 STRING_PARAMS=""
 MODEL=""
 MULTI_RMSD=""
+FIRST=""
 
 ############################
 # READING INPUT PARAMETERS #
@@ -127,17 +130,18 @@ while [[ $# -gt 0 ]]; do
 			exit 0
 	shift
 	;;
-	#----------------------------------------
-		-i|--input)
+		#----------------------------------------
+	-i|--input)
 			if ! [ -f "$3" ]; then
 				echo "Single-stream mode"
-				INPUT="$2";
+			INPUT="$2"
 				shift
 			else
 				num_streams=0
 				if [ -f "tmp.stream" ]; then 
 					echo "Removing tmp.stream" 
-					rm "tmp.stream"; fi
+					rm "tmp.stream"
+			fi
 				while [ -f "$2" ]; do
 					echo "    ...using $2 as part of input file"
 					cat "$2" >> 'tmp.stream'
@@ -149,7 +153,7 @@ while [[ $# -gt 0 ]]; do
 			fi
 	;; # there is no shift here for correct multi-stream input
 	#----------------------------------------
-		-p|--cell)
+	-p |--cell)
 			CELL="$2"
 	shift
 	;;
@@ -233,6 +237,11 @@ while [[ $# -gt 0 ]]; do
 	#----------------------------------------
 		--symmetry|-y)
 			SYMMETRY="$2"
+	shift
+	;;
+	#----------------------------------------
+		--first)
+			FIRST="$2"
 	shift
 	;;
 	#----------------------------------------
@@ -320,7 +329,8 @@ if ! [[ ${LOWRES} =~ $is_float_positive ]]; then
 if ! [[ ${HIGHRES} =~ $is_float_positive ]]; then
 	echo -e "\e[31mError:\e[0m HIGHRES should be valid float number, e.g. 30.0 (but '030.0' would be invalid)"; exit 1; fi
 if [[ $(python -c "print(${HIGHRES}>=${LOWRES})") == "True" ]]; then
-	echo -e "\e[31mError:\e[0m HIGHRES >= LOWRES"; exit 1; fi
+	echo -e "\e[31mError:\e[0m HIGHRES >= LOWRES"
+	exit 1; fi
 
 # check validity of PUSHRES
 is_float_positive='^[0-9]*\.[0-9]*$'
@@ -392,6 +402,12 @@ if [[ "$RATE" == "TRUE" ]]; then
 	elif [[ $(wc -l < ${CELL}) -lt 6 ]]; then
 		echo -e "\e[31mError:\e[0m the cell file <${CELL}> you provided has less than 6 lines and thereby is probably empty"; exit 1
 	fi
+fi
+
+# check validity of FIRST
+is_integer='^[0-9]+$'
+if [[ "$FIRST" != "" ]] && ! [[ "$FIRST" =~ $is_integer ]]; then
+	echo -e "\e[31mError:\e[0m number of first N images to merge should be integer"; exit 1
 fi
 
 #----------------------------------------------------------------------------------------------
@@ -560,6 +576,9 @@ if [[ "$MERGING" == "partialator" ]]; then
 --symmetry=$SYMMETRY \
 --min-res=${HIGHRES_INCLUDE} \
 ${STRING_PARAMS}"
+	if [[ "$FIRST" != "" ]]; then
+		MERGING_COMMAND="${MERGING_COMMAND} --stop-after ${FIRST}"
+	fi
 	echo "Merging with following command: ${MERGING_COMMAND}"
 	eval "${MERGING_COMMAND}" | tee "${LOGS}/partialator.log"
 
@@ -572,10 +591,17 @@ elif [[ "$MERGING" == "process_hkl" ]]; then
 --min-res=${HIGHRES_INCLUDE} \
 --min-cc=${MIN_CC} \
 ${STRING_PARAMS}"
-	echo "Merging with following command: ${MERGING_COMMAND} -o ${LOGS}/merged.hkl"
-	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl"              | tee "${LOGS}/process_hkl.log"
-	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl1 --odd-only"  | tee "${LOGS}/process_hkl1.log"
-	eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl2 --even-only" | tee "${LOGS}/process_hkl2.log"
+	if [[ ${FIRST} != "" ]]; then
+		echo "Merging with following command: ${MERGING_COMMAND} --stop-after ${FIRST} -o ${LOGS}/merged.hkl"
+		eval "${MERGING_COMMAND} --stop-after ${FIRST} -o ${LOGS}/merged.hkl"              | tee "${LOGS}/process_hkl.log"
+		eval "${MERGING_COMMAND} --stop-after $(( $FIRST / 2 )) -o ${LOGS}/merged.hkl1 --odd-only"  | tee "${LOGS}/process_hkl1.log"
+		eval "${MERGING_COMMAND} --stop-after $(( $FIRST / 2 )) -o ${LOGS}/merged.hkl2 --even-only" | tee "${LOGS}/process_hkl2.log"
+	else
+		echo "Merging with following command: ${MERGING_COMMAND} -o ${LOGS}/merged.hkl"
+		eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl"              | tee "${LOGS}/process_hkl.log"
+		eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl1 --odd-only"  | tee "${LOGS}/process_hkl1.log"
+		eval "${MERGING_COMMAND} -o ${LOGS}/merged.hkl2 --even-only" | tee "${LOGS}/process_hkl2.log"
+	fi
 else
 	:
 fi	
