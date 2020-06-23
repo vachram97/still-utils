@@ -178,7 +178,6 @@ if [[ "${SLURM}" == "1" ]]; then
 	done
 
 	echo "tail -f ${CURRENT_LOGDIR}/stderr_*.log"
-	tail -f ${CURRENT_LOGDIR}/stderr_*.log
 
 else
 	# linking the laststream
