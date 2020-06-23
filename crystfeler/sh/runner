@@ -104,10 +104,6 @@ elif [[ "$SHUFFLE" == 0 ]] && [[ "$TOP" != "none" ]]; then
 fi
 LST="input.lst";
 
-echo "$SHUFFLE"
-echo "$LST"
-exit 0
-
 
 # Start building the indexamajig command
 BASEEXECSTRING="indexamajig \
