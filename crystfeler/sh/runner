@@ -67,7 +67,7 @@ create_variables() {
 
 # SLURM parameters
 SLURM_HEADER_FILE="slurm.header"
-SLURM_SETUP="module load apps/crystfel-0.8.0"
+SLURM_SETUP="module load apps/crystfel-0.9.0"
 
 TOP="none"
 time=$(date "+%Y_%m_%d_%H_%M_%S")
@@ -83,6 +83,13 @@ if ! [[ ${GEOM::1} == "/" ]]; then GEOM="${PWD}/${GEOM}"; fi
 if ! [[ ${CELL::1} == "/" ]]; then CELL="${PWD}/${CELL}"; fi
 if ! [[ ${LST::1} == "/" ]]; then LST="${PWD}/${LST}"; fi
 
+# set default non-influencing SNR & THRESHOLD if cxi or h5
+
+if [[ "$PEAKS" == "cxi" ]] || [[ "$PEAKS" == "h5" ]]; then
+	SNR="0.0"
+	THRESHOLD="1"
+	HIGHRES="1.0"
+fi
 
 
 # Essential folders
