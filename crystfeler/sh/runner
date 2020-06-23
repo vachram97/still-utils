@@ -66,8 +66,8 @@ create_variables() {
 #--------------------------------------------------------------------------
 
 # SLURM parameters
-# SLURM_HEADER_FILE="slurm.header"
-# SLURM_SETUP="module load apps/crystfel-0.8.0"
+SLURM_HEADER_FILE="slurm.header"
+SLURM_SETUP="module load apps/crystfel-0.8.0"
 
 TOP="none"
 time=$(date "+%Y_%m_%d_%H_%M_%S")
@@ -137,7 +137,8 @@ if [[ "${SLURM}" == "1" ]]; then
 		cat ${SLURM_HEADER_FILE} >> "${current_worker}"
 
 		echo "#SBATCH --chdir ${CURRENT_LOGDIR}" >> "${current_worker}" >> ${current_worker}
-		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}_w${worker_num}" >> ${current_worker}
+		# echo "#SBATCH --job-name ${PROJECT_NAME:0:8}_w${worker_num}" >> ${current_worker}
+		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}" >> ${current_worker}
 		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_${worker_num}.log" >> ${current_worker}
 		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${worker_num}.log" >> ${current_worker}
 		echo "#SBATCH --ntasks=${NTASKS}" >> ${current_worker}
@@ -177,6 +178,7 @@ if [[ "${SLURM}" == "1" ]]; then
 	done
 
 	echo "tail -f ${CURRENT_LOGDIR}/stderr_*.log"
+	tail -f ${CURRENT_LOGDIR}/stderr_*.log
 
 else
 	# linking the laststream
