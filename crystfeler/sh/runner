@@ -155,6 +155,19 @@ if [[ "${SLURM}" == "1" ]]; then
 		echo >> "${current_worker}"
 	done
 
+	# writing tail line
+	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
+		dummy="$(basename "${current_lst}" .lst)"
+		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
+		worker_num=$(( worker_num % NUM_WORKERS + 1))
+		current_stream=${CURRENT_LOGDIR}/stream_${current_idx}.stream
+		current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
+	
+		echo "touch ${current_stream}" >> "${current_worker}"
+		echo "tail -f ${current_stream} --pid=\$\$ | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream & disown" >> "${current_worker}"
+
+	done
+
 	# writing multiple-worker execution strings
 	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
 		dummy="$(basename "${current_lst}" .lst)"
@@ -168,14 +181,11 @@ if [[ "${SLURM}" == "1" ]]; then
 		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 		EXECSTRING="${EXECSTRING} -j ${NPROC}"  # this will use the `nproc` value on host machine
 
-		echo "touch ${current_stream}" >> "${current_worker}"
-		echo "tail -f ${current_stream} --pid=\$\$ | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream &" >> "${current_worker}"
 		echo "$EXECSTRING &" >> "${current_worker}"
 
 		# echo "cat ${current_stream} | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream.final" >> "${current_worker}"
 		# targz partial streams to save some space
 		# echo "tar fcz ${current_stream}.tar.gz ${current_stream} --absolute-names" >> "${current_worker}"
-
 	done
 
 	# sbatch-ing workers
