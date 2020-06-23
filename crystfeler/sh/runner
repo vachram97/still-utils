@@ -76,6 +76,7 @@ for var in "$@"; do
 		echo "Input file ${var} is invalid"; exit 1
 	fi
 done
+TOP="$(echo -e "${TOP}" | tr -d '[:space:]')"
 
 # check if path is absolute, if not -- make it
 if ! [[ ${GEOM::1} == "/" ]]; then GEOM="${PWD}/${GEOM}"; fi
@@ -98,7 +99,7 @@ if   [[ "$SHUFFLE" == 1 ]] && [[ "$TOP" == "none" ]]; then
 elif [[ "$SHUFFLE" == 1 ]] && [[ "$TOP" != "none" ]]; then
 	shuf "$LST" | head -n "$TOP" > input.lst
 elif [[ "$SHUFFLE" == 0 ]] && [[ "$TOP" == "none" ]]; then
-	head -n "$LST" > input.lst
+	head -n "$TOP" "$LST" > input.lst
 elif [[ "$SHUFFLE" == 0 ]] && [[ "$TOP" != "none" ]]; then
 	cat "$LST" > input.lst
 fi
