@@ -98,9 +98,9 @@ if   [[ "$SHUFFLE" == 1 ]] && [[ "$TOP" == "none" ]]; then
 	shuf "$LST" > input.lst # your list must have events to enable this
 elif [[ "$SHUFFLE" == 1 ]] && [[ "$TOP" != "none" ]]; then
 	shuf "$LST" | head -n "$TOP" > input.lst
-elif [[ "$SHUFFLE" == 0 ]] && [[ "$TOP" == "none" ]]; then
-	head -n "$TOP" "$LST" > input.lst
 elif [[ "$SHUFFLE" == 0 ]] && [[ "$TOP" != "none" ]]; then
+	head -n "$TOP" "$LST" > input.lst
+elif [[ "$SHUFFLE" == 0 ]] && [[ "$TOP" == "none" ]]; then
 	cat "$LST" > input.lst
 fi
 LST="input.lst";
