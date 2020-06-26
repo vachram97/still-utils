@@ -156,6 +156,7 @@ if [[ "${SLURM}" == "1" ]]; then
 	done
 
 	# writing tail line
+	worker_num=0
 	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
 		dummy="$(basename "${current_lst}" .lst)"
 		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
@@ -169,6 +170,7 @@ if [[ "${SLURM}" == "1" ]]; then
 	done
 
 	# writing multiple-worker execution strings
+	worker_num=0
 	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
 		dummy="$(basename "${current_lst}" .lst)"
 		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
