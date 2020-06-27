@@ -467,7 +467,7 @@ function rate() {
 	# outputs to overall_stats.log statistics, obtained with check_hkl (SNR, multiplicity, N of refl, etc), and also Rsplit, CC and CC*.
 	HKL_TEMPLATE="$1"
 	COMPARE_HKL_PARAMS="-y ${SYMMETRY} -p ${CELL} --lowres=${LOWRES} --highres=${HIGHRES}"
-	FOMS=("rsplit" "cc" "ccstar")
+	FOMS=("rsplit" "cc" "ccstar" "ccano")
 	touch "${LOGS}/execution.log" &>/dev/null
 
 	# do per-shell stats.dat
@@ -499,17 +499,20 @@ function rate() {
 	paste "${LOGS}/check_hkl.dat" \
 		<(awk '{print $3}' "${LOGS}/shells_rsplit.dat") \
 		<(awk '{print $3}' "${LOGS}/shells_cc.dat") \
-		<(awk '{print $3}' "${LOGS}/shells_ccstar.dat") | head -n 1 >>"${LOGS}/overall_stats.csv"
+		<(awk '{print $3}' "${LOGS}/shells_ccstar.dat") \
+		<(awk '{print $3}' "${LOGS}/shells_ccano.dat") | head -n 1 >>"${LOGS}/overall_stats.csv"
 	paste "${LOGS}/check_hkl.dat" \
 		<(awk '{print $2}' "${LOGS}/shells_rsplit.dat") \
 		<(awk '{print $2}' "${LOGS}/shells_cc.dat") \
-		<(awk '{print $2}' "${LOGS}/shells_ccstar.dat") | tail -n+2 >>"${LOGS}/overall_stats.csv"
+		<(awk '{print $2}' "${LOGS}/shells_ccstar.dat") \
+		<(awk '{print $2}' "${LOGS}/shells_ccano.dat")| tail -n+2 >>"${LOGS}/overall_stats.csv"
 	echo "   -------------------------------------------------------------------------------------------------------------------------------------------------------" \
 		>>"${LOGS}/overall_stats.csv"
 	paste "${LOGS}/check_hkl_full.dat" \
 		<(awk '{print $2}' "${LOGS}/shells_rsplit_full.dat") \
 		<(awk '{print $2}' "${LOGS}/shells_cc_full.dat") \
-		<(awk '{print $2}' "${LOGS}/shells_ccstar_full.dat") | tail -n+2 >>"${LOGS}/overall_stats.csv"
+		<(awk '{print $2}' "${LOGS}/shells_ccstar_full.dat") \
+		<(awk '{print $2}' "${LOGS}/shells_ccano_full.dat")| tail -n+2 >>"${LOGS}/overall_stats.csv"
 	cat "${LOGS}/overall_stats.csv"
 
 }
