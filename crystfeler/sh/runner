@@ -114,7 +114,7 @@ LST="input.lst";
 
 
 # Start building the indexamajig command
-BASEEXECSTRING="srun --exclusive -N 1 -n 1 indexamajig \
+BASEEXECSTRING="indexamajig \
 -g ${GEOM} \
 -p ${CELL} \
 --min-snr=${SNR} \
@@ -179,7 +179,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
 
 		# now writing the execution string itself
-		EXECSTRING="${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
+		EXECSTRING="srun --exclusive -N 1 -n 1 ${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
 		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 		EXECSTRING="${EXECSTRING} -j ${NPROC}"  # this will use the `nproc` value on host machine
 
