@@ -114,7 +114,7 @@ LST="input.lst";
 
 
 # Start building the indexamajig command
-BASEEXECSTRING="indexamajig \
+BASEEXECSTRING="srun --exclusive -N 1 -n 1 indexamajig \
 -g ${GEOM} \
 -p ${CELL} \
 --min-snr=${SNR} \
