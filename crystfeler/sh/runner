@@ -225,7 +225,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		echo "#SBATCH --ntasks=1" >> ${merger}
 		echo "#SBATCH --cpus-per-task=1" >> ${merger}
 
-		dep_string="#SBATCH -d=afterany"
+		dep_string="#SBATCH --dependency=afterany"
 		for job_number in ${JOB_NUMBERS}; do
 			dep_string="${dep_string}:${job_number}"
 		done
