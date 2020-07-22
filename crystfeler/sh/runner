@@ -65,6 +65,9 @@ create_variables() {
 }
 #--------------------------------------------------------------------------
 
+# merging online by default
+MERGE_OFFLINE= "FALSE"
+
 # SLURM parameters
 SLURM_HEADER_FILE="slurm.header"
 SLURM_SETUP="module load apps/crystfel-0.9.0"
@@ -156,18 +159,20 @@ if [[ "${SLURM}" == "1" ]]; then
 	done
 
 	# writing tail line
-	worker_num=0
-	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
-		dummy="$(basename "${current_lst}" .lst)"
-		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
-		worker_num=$(( worker_num % NUM_WORKERS + 1))
-		current_stream=${CURRENT_LOGDIR}/stream_${current_idx}.stream
-		current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
-	
-		echo "touch ${current_stream}" >> "${current_worker}"
-		echo "tail -f ${current_stream} --pid=\$\$ | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream & disown" >> "${current_worker}"
+	if [[ "${MERGE_OFFLINE}" == "FALSE" ]]; then
+		worker_num=0
+		for current_lst in "${CURRENT_LOGDIR}/list_"*; do
+			dummy="$(basename "${current_lst}" .lst)"
+			current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
+			worker_num=$(( worker_num % NUM_WORKERS + 1))
+			current_stream=${CURRENT_LOGDIR}/stream_${current_idx}.stream
+			current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
+		
+			echo "touch ${current_stream}" >> "${current_worker}"
+			echo "tail -f ${current_stream} --pid=\$\$ | pylock ${STREAMDIR}/${PROJECT_NAME}_${time}.stream & disown" >> "${current_worker}"
 
-	done
+		done
+	fi
 
 	# writing multiple-worker execution strings
 	worker_num=0
@@ -193,8 +198,35 @@ if [[ "${SLURM}" == "1" ]]; then
 	# sbatch-ing workers
 	for worker in "${CURRENT_LOGDIR}/worker_"*; do
 		echo "wait" >> "${worker}"
-		sbatch "${worker}"
+		JOB_NUMBERS="${JOB_NUMBERS} $(sbatch "${worker}" | awk '{ print $4 }')"
 	done
+
+	echo "Job numbers submitted are ${JOB_NUMBERS}"
+
+	if [[ "${MERGE_OFFLINE}" == "TRUE" ]]; then
+
+		merger=${CURRENT_LOGDIR}/merger.sh
+
+		echo "#SBATCH --chdir ${CURRENT_LOGDIR}" >> "${current_worker}" >> ${current_worker}
+		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}" >> ${current_worker}
+		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_merge.log" >> ${current_worker}
+		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_merge.log" >> ${current_worker}
+		echo "#SBATCH --ntasks=1" >> ${current_worker}
+		echo "#SBATCH --cpus-per-task=1" >> ${current_worker}
+
+		dep_string= "#SBATCH -d=afterany"
+		for job_number in JOB_NUMBERS; do
+			dep_string="${dep_string}:${job_number}"
+		done
+
+		echo "${dep_string}" >> ${current_worker}
+		echo >> "${current_worker}"
+
+		echo 'for strm in "${CURRENT_LOGDIR}/stream_????.stream"; do
+			echo "Found ${strm}"
+			cat $strm >> ${STREAMDIR}/${PROJECT_NAME}_${time}.stream
+		done' >> "${current_worker}"
+	fi
 
 	echo "tail -f ${CURRENT_LOGDIR}/stderr_*.log"
 
