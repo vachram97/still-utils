@@ -156,6 +156,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${worker_num}.log" >> ${current_worker}
 		echo "#SBATCH --nodes ${NNODES}" >> ${current_worker}
 		echo "#SBATCH --exclusive" >> ${current_worker}
+		echo "#SBATCH --cpus-per-task ${NPROC}" >> ${current_worker}
 		echo >> "${current_worker}"
 		echo "${SLURM_SETUP}" >> "${current_worker}"
 		echo >> "${current_worker}"
@@ -179,7 +180,6 @@ if [[ "${SLURM}" == "1" ]]; then
 
 	# writing multiple-worker execution strings
 	worker_num=0
-	NPROC=$(nproc)
 	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
 		dummy="$(basename "${current_lst}" .lst)"
 		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
@@ -217,7 +217,7 @@ if [[ "${SLURM}" == "1" ]]; then
 	if [[ "${MERGE_OFFLINE}" == "TRUE" ]]; then
 
 		merger=${CURRENT_LOGDIR}/merger.sh
-
+		cat ${SLURM_HEADER_FILE} >> "${merger}"
 		echo "#SBATCH --chdir ${CURRENT_LOGDIR}" >> "${merger}" >> ${merger}
 		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}" >> ${merger}
 		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_merge.log" >> ${merger}
