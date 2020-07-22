@@ -13,8 +13,14 @@ TOP: none  # whether you want to take first TOP images of your LST
 
 # SLURM parameters
 SLURM: 1
-CPULINES: 100 # number of lines per single CPU
+NODELINES: 100 # number of lines per single node
 NUM_WORKERS: 4 # number of SLURM tasks to be submited
+
+# MERGING_OFFLINE
+MERGE_OFFLINE: FALSE # when TRUE, stream merging is performed after all indexamajig runs are completed
+
+# TESTING
+TEST: TRUE # when TRUE, no sbatch commands are executed
 
 # PEAK FINDING PARAMETERS
 SNR: 4.0
