@@ -65,8 +65,11 @@ create_variables() {
 }
 #--------------------------------------------------------------------------
 
+#testing by default is off
+TEST="FALSE"
+
 # merging online by default
-MERGE_OFFLINE= "FALSE"
+MERGE_OFFLINE="FALSE"
 
 # SLURM parameters
 SLURM_HEADER_FILE="slurm.header"
@@ -131,13 +134,13 @@ touch "streams/${PROJECT_NAME}_${time}.stream"
 ln -sf "streams/${PROJECT_NAME}_${time}.stream" laststream
 if [[ "${SLURM}" == "1" ]]; then
 	NLINES_INPUT="$(wc -l ${LST} | awk '{print $1}')"
-	NTASKS=$(python -c "print(${NLINES_INPUT}/${NUM_WORKERS}/${CPULINES} + 1)")
+	NNODES=$(python -c "print(${NLINES_INPUT}/${NUM_WORKERS}/${NODELINES} + 1)")
 
 	# Divide initial list into separate lists for each job
 	split --numeric-suffixes=1 \
 		--additional-suffix=".lst" \
 		--suffix-length=4 \
-		--lines=${CPULINES} \
+		--lines=${NODELINES} \
 		"${LST}" "${CURRENT_LOGDIR}/list_"
 
 	# print headers to each worker
@@ -151,8 +154,8 @@ if [[ "${SLURM}" == "1" ]]; then
 		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}" >> ${current_worker}
 		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_${worker_num}.log" >> ${current_worker}
 		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${worker_num}.log" >> ${current_worker}
-		echo "#SBATCH --ntasks=${NTASKS}" >> ${current_worker}
-		echo "#SBATCH --cpus-per-task=1" >> ${current_worker}
+		echo "#SBATCH --nodes ${NNODES}" >> ${current_worker}
+		echo "#SBATCH --exclusive" >> ${current_worker}
 		echo >> "${current_worker}"
 		echo "${SLURM_SETUP}" >> "${current_worker}"
 		echo >> "${current_worker}"
@@ -176,6 +179,7 @@ if [[ "${SLURM}" == "1" ]]; then
 
 	# writing multiple-worker execution strings
 	worker_num=0
+	NPROC=$(nproc)
 	for current_lst in "${CURRENT_LOGDIR}/list_"*; do
 		dummy="$(basename "${current_lst}" .lst)"
 		current_idx=${dummy: -4}  # 4 is hardcoded in suffix-length in 'split' command above
@@ -184,7 +188,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
 
 		# now writing the execution string itself
-		EXECSTRING="srun --exclusive -N 1 -n 1 ${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
+		EXECSTRING="srun --exclusive --nodes=1 ${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
 		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 		EXECSTRING="${EXECSTRING} -j ${NPROC}"  # this will use the `nproc` value on host machine
 
@@ -195,10 +199,17 @@ if [[ "${SLURM}" == "1" ]]; then
 		# echo "tar fcz ${current_stream}.tar.gz ${current_stream} --absolute-names" >> "${current_worker}"
 	done
 
-	# sbatch-ing workers
+	# modifying node numbers and running sbatch-ing workers
 	for worker in "${CURRENT_LOGDIR}/worker_"*; do
 		echo "wait" >> "${worker}"
-		JOB_NUMBERS="${JOB_NUMBERS} $(sbatch "${worker}" | awk '{ print $4 }')"
+		cat "${worker}" | sed "s/SBATCH --nodes ${NNODES}/SBATCH --nodes $(cat ${worker} | grep srun | wc -l)/g" > "${CURRENT_LOGDIR}/tmp_worker.sh"
+		cp "${CURRENT_LOGDIR}/tmp_worker.sh" "${worker}"
+		rm "${CURRENT_LOGDIR}/tmp_worker.sh"
+		if [[ "${TEST}" == "FALSE" ]]; then
+			JOB_NUMBERS="${JOB_NUMBERS} $(sbatch "${worker}" | awk '{ print $4 }')"
+		else
+			JOB_NUMBERS="${JOB_NUMBERS} $(echo "$worker" | awk '{print substr($0,length($0)-3,1)}')" # make e.g 2 from worker_2.sh
+		fi
 	done
 
 	echo "Job numbers submitted are ${JOB_NUMBERS}"
@@ -207,25 +218,29 @@ if [[ "${SLURM}" == "1" ]]; then
 
 		merger=${CURRENT_LOGDIR}/merger.sh
 
-		echo "#SBATCH --chdir ${CURRENT_LOGDIR}" >> "${current_worker}" >> ${current_worker}
-		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}" >> ${current_worker}
-		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_merge.log" >> ${current_worker}
-		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_merge.log" >> ${current_worker}
-		echo "#SBATCH --ntasks=1" >> ${current_worker}
-		echo "#SBATCH --cpus-per-task=1" >> ${current_worker}
+		echo "#SBATCH --chdir ${CURRENT_LOGDIR}" >> "${merger}" >> ${merger}
+		echo "#SBATCH --job-name ${PROJECT_NAME:0:8}" >> ${merger}
+		echo "#SBATCH --output ${CURRENT_LOGDIR}/stdout_merge.log" >> ${merger}
+		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_merge.log" >> ${merger}
+		echo "#SBATCH --ntasks=1" >> ${merger}
+		echo "#SBATCH --cpus-per-task=1" >> ${merger}
 
-		dep_string= "#SBATCH -d=afterany"
-		for job_number in JOB_NUMBERS; do
+		dep_string="#SBATCH -d=afterany"
+		for job_number in ${JOB_NUMBERS}; do
 			dep_string="${dep_string}:${job_number}"
 		done
 
-		echo "${dep_string}" >> ${current_worker}
-		echo >> "${current_worker}"
+		echo "${dep_string}" >> ${merger}
+		echo >> "${merger}"
 
-		echo 'for strm in "${CURRENT_LOGDIR}/stream_????.stream"; do
-			echo "Found ${strm}"
-			cat $strm >> ${STREAMDIR}/${PROJECT_NAME}_${time}.stream
-		done' >> "${current_worker}"
+		echo "for strm in \"${CURRENT_LOGDIR}/stream_????.stream\"; do
+			echo \"Found \${strm}\"
+			cat \${strm} >> ${STREAMDIR}/${PROJECT_NAME}_${time}.stream
+		done" >> "${merger}"
+		
+		if [[ "${TEST}" == "FALSE" ]]; then
+			sbatch "${merger}"
+		fi
 	fi
 
 	echo "tail -f ${CURRENT_LOGDIR}/stderr_*.log"
