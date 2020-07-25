@@ -156,7 +156,6 @@ if [[ "${SLURM}" == "1" ]]; then
 		echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_${worker_num}.log" >> ${current_worker}
 		echo "#SBATCH --nodes ${NNODES}" >> ${current_worker}
 		echo "#SBATCH --exclusive" >> ${current_worker}
-		echo "#SBATCH --cpus-per-task ${NPROC}" >> ${current_worker}
 		echo >> "${current_worker}"
 		echo "${SLURM_SETUP}" >> "${current_worker}"
 		echo >> "${current_worker}"
@@ -188,7 +187,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		current_worker=${CURRENT_LOGDIR}/worker_${worker_num}.sh
 
 		# now writing the execution string itself
-		EXECSTRING="srun --exclusive --nodes=1 ${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
+		EXECSTRING="srun --exclusive --nodes=1 -c ${NPROC} --ntasks 1 ${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
 		EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 		EXECSTRING="${EXECSTRING} -j ${NPROC}"  # this will use the `nproc` value on host machine
 
@@ -233,7 +232,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		echo "${dep_string}" >> ${merger}
 		echo >> "${merger}"
 
-		echo "for strm in \"${CURRENT_LOGDIR}/stream_????.stream\"; do
+		echo "for strm in \"${CURRENT_LOGDIR}/stream_*.stream\"; do
 			echo \"Found \${strm}\"
 			cat \${strm} >> ${STREAMDIR}/${PROJECT_NAME}_${time}.stream
 		done" >> "${merger}"

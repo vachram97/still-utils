@@ -1,6 +1,6 @@
 # PROJECT PARAMETERS
 PROJECT_NAME: GPCR # name prefix for output stream
-NPROC: 1 # number of processors; valid only when SLURM=0
+NPROC: 16 # number of processors; if SLURM=1, number of vCPUs per computing node (assuming homogenous cluster)
 
 # INPUT FILES
 GEOM: initial.geom
@@ -17,10 +17,10 @@ NODELINES: 100 # number of lines per single node
 NUM_WORKERS: 4 # number of SLURM tasks to be submited
 
 # MERGING_OFFLINE
-MERGE_OFFLINE: FALSE # when TRUE, stream merging is performed after all indexamajig runs are completed
+MERGE_OFFLINE: FALSE # when TRUE, stream merging is performed after all indexamajig runs are completed (valid if SLURM=1)
 
 # TESTING
-TEST: TRUE # when TRUE, no sbatch commands are executed
+TEST: FALSE # when TRUE, no sbatch commands are executed
 
 # PEAK FINDING PARAMETERS
 SNR: 4.0
