@@ -75,11 +75,20 @@ MERGE_OFFLINE="TRUE"
 SLURM_HEADER_FILE="slurm.header"
 SLURM_SETUP="module load apps/crystfel-0.9.0"
 
-TOP="none"
+# Essential folders
 time=$(date "+%Y_%m_%d_%H_%M_%S")
+LOGDIR="${PWD}/logs"; mkdir "${LOGDIR}" &> /dev/null
+STREAMDIR="${PWD}/streams"; mkdir "${STREAMDIR}" &> /dev/null
+
+CURRENT_LOGDIR="${LOGDIR}/${PROJECT_NAME}_${time}"
+mkdir -p "${CURRENT_LOGDIR}/indexer-logs" 2>/dev/null || exit 1;
+
+TOP="none"
 for var in "$@"; do
 	if ! create_variables "$var"; then
 		echo "Input file ${var} is invalid"; exit 1
+	else
+		cp $var "$CURRENT_LOGDIR"
 	fi
 done
 TOP="$(echo -e "${TOP}" | tr -d '[:space:]')"
@@ -96,15 +105,6 @@ if [[ "$PEAKS" == "cxi" ]] || [[ "$PEAKS" == "h5" ]]; then
 	THRESHOLD="1"
 	HIGHRES="1.0"
 fi
-
-
-# Essential folders
-LOGDIR="${PWD}/logs"; mkdir "${LOGDIR}" &> /dev/null
-STREAMDIR="${PWD}/streams"; mkdir "${STREAMDIR}" &> /dev/null
-
-CURRENT_LOGDIR="${LOGDIR}/${PROJECT_NAME}_${time}"
-mkdir -p "${CURRENT_LOGDIR}/indexer-logs" 2>/dev/null || exit 1;
-
 
 # Shuffling the stream
 if   [[ "$SHUFFLE" == 1 ]] && [[ "$TOP" == "none" ]]; then
