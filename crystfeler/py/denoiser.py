@@ -82,12 +82,16 @@ def scalefactors(arr, bkg, threshold=0.01, nsteps=100):
     return np.array(scales)
 
 
-def output_arr(arr, datapath, filename="denoised.h5"):
+def output_arr(arr, datapath, filename="denoised.h5", dtype='int16'):
     """Outputs array to cxi file"""
 
     print(f"Output fo {filename}...")
     with h5py.File(filename, "w") as f:
-        f.create_dataset(datapath, data=arr)
+        if dtype is None:
+            f.create_dataset(datapath, data=arr)
+        else:
+            f.create_dataset(datapath, data=arr.astype(dtype))
+
 
 
 def main(args):
