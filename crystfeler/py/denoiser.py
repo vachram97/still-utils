@@ -94,7 +94,7 @@ def main(args):
         description="Denoises images using simple percentile filter"
     )
     parser.add_argument(
-        "input_lst",
+        "input_cxi",
         type=str,
         help="Input list in CrystFEL format (might be with or without events, or even combined)",
     )
@@ -105,10 +105,10 @@ def main(args):
 
     parser.add_argument("--percentile", type=int, help="Percentile to use", default=90)
     parser.add_argument(
-        "--negative_threshold",
+        "--threshold",
         type=float,
         help="Threshold for scale factor determination",
-        defalut=0.01,
+        default=0.01,
     )
     parser.add_argument(
         "--radius", type=int, default=45, help="Radius to apply mask in the center"
