@@ -5,6 +5,7 @@ import numpy as np
 import h5py
 import glob
 import sys
+from tqdm import tqdm
 
 
 def load_cxi(input_cxi: str, datapath: str, top=None):
@@ -16,13 +17,13 @@ def load_cxi(input_cxi: str, datapath: str, top=None):
     with h5py.File(input_cxi, "r") as f:
         ret = np.array(f[datapath][:top])
 
+    print(f"Loaded {input_cxi} sucessfully")
     return ret
 
 
 def apply_mask(np_arr, center, r=45):
 
-    print("Mask")
-
+    print("Started applying mask")
     if len(np_arr.shape) == 3:
         shape = np_arr.shape[1:]
         shape_type = 3
@@ -37,6 +38,7 @@ def apply_mask(np_arr, center, r=45):
             if (x - rx) ** 2 + (y - ry) ** 2 <= r ** 2:
                 mask[x][y] = 0
 
+    print("Mask applied")
     if shape_type == 2:
         return np_arr * mask
     else:
@@ -47,9 +49,11 @@ def apply_mask(np_arr, center, r=45):
 def background(arr, q=90):
     """Return median of q-th percentile of each pixel"""
 
+    print("Start background estimation")
     p = np.percentile(arr, q=90, axis=(0))
     b = np.median(arr * (arr < p), axis=0)
 
+    print("Background estimated")
     return b
 
 
@@ -60,12 +64,12 @@ def scalefactors(arr, bkg, threshold=0.01, nsteps=100):
     is less thatn threshold
     """
 
-    print("Scalefactors")
+    print("Start scalefactor estimation")
     scales = []
     N = arr.shape[0]
     n_pixels = arr.shape[1] * arr.shape[2]
 
-    for idx in range(N):
+    for idx in tqdm(range(N), desc="Applying scalefactors"):
         img = arr[idx]
 
         x = np.linspace(0, 2, nsteps)
@@ -74,15 +78,14 @@ def scalefactors(arr, bkg, threshold=0.01, nsteps=100):
 
         scales.append(scale)
 
-        if idx % 10 == 0:
-            print(idx)
-
+    print("Scalefactors estimated")
     return np.array(scales)
 
 
 def output_arr(arr, datapath, filename="denoised.h5"):
     """Outputs array to cxi file"""
 
+    print(f"Output fo {filename}...")
     with h5py.File(filename, "w") as f:
         f.create_dataset(datapath, data=arr)
 
@@ -114,6 +117,9 @@ def main(args):
         "--radius", type=int, default=45, help="Radius to apply mask in the center"
     )
     parser.add_argument(
+        "--top", type=int, default=100, help="Top N images to read from each cxi file"
+    )
+    parser.add_argument(
         "--nsteps",
         type=int,
         default=200,
@@ -122,7 +128,7 @@ def main(args):
 
     args = parser.parse_args()
 
-    arr = load_cxi(args.input_cxi, datapath=args.datapath)
+    arr = load_cxi(args.input_cxi, datapath=args.datapath, top=args.top)
     center = map(float, args.center.split())
     center = list(center)
 
@@ -135,10 +141,10 @@ def main(args):
 
     denoised = arr_upd - full_bkg
 
-    denoised_filename = f"{args.input_cxi.rsplit('.')}_denoised.cxi"
-    bkg_filename = f"{args.input_cxi.rsplit('.')}_background.cxi"
-    output_arr(denoised, datapath=args.datapath, filename = denoised_filename)
-    output_arr(full_bkg, datapath=args.datapath, filename = bkg_filename)
+    denoised_filename = f"{'.'.join(args.input_cxi.rsplit('.'))}_denoised.cxi"
+    bkg_filename = f"{'.'.join(args.input_cxi.rsplit('.'))}_background.cxi"
+    output_arr(denoised, datapath=args.datapath, filename=denoised_filename)
+    output_arr(full_bkg, datapath=args.datapath, filename=bkg_filename)
 
 
 if __name__ == "__main__":
