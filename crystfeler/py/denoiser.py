@@ -3,7 +3,6 @@
 import argparse
 import numpy as np
 import h5py
-import glob
 import sys
 from tqdm import tqdm
 
