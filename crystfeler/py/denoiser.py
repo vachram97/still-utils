@@ -83,7 +83,7 @@ def denoise_lst(
                     if zero_negative:
                         new_data[new_data < 0] = 0
 
-                    output_cxi = f'{input_lst.rsplit(".")[0]}_{cxi_cnt}_{chunk_idx}.cxi'
+                    output_cxi = f'{output_cxi_prefix}_{input_lst.rsplit(".")[0]}_{cxi_cnt}_{chunk_idx}.cxi'
                     shape = current_data.shape
 
                     with h5py.File(output_cxi, "w") as h5fout:
