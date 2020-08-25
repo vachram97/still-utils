@@ -76,7 +76,9 @@ def lst2dict(
     for cxi_name, arr in tqdm(
         profiles_dict.items(), desc="Iterating over profiles_dict"
     ):
-        for event, profile in arr:
+        for event, profile in tqdm(
+            arr, desc="Iterate over each single cxi image filename"
+        ):
             ret.append(np.array([cxi_name, event, profile]))
     ret = np.array(ret)
     return ret
