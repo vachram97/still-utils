@@ -89,6 +89,7 @@ def dict2clustered_lists(
     output_prefix="clustered",
     threshold=25,
     criterion="maxclust",
+    min_num_images = 50
 ):
     profiles = np.array([elem[2] for elem in profiles_arr])
     names_and_events = profiles_arr[:, :2]
@@ -98,9 +99,12 @@ def dict2clustered_lists(
 
     # output lists
     for list_idx in tqdm(list(set(idx)), desc="Output lists"):
-        belong_to_this_idx = np.where(idx == list_idx)
-        fout_name = f"{output_prefix}_{list_idx}.lst"
-        with open(fout_name, "w") as fout:
+        belong_to_this_idx = np.where(idx == list_idx)[0]
+        if len(belong_to_this_idx) < min_num_images:
+            fout_name = f"{output_prefix}_singletone.lst"
+        else:
+            fout_name = f"{output_prefix}_{list_idx}.lst"
+        with open(fout_name, "a") as fout:
             for line in names_and_events[belong_to_this_idx]:
                 cxi_name, event = line
                 print(f"{cxi_name} //{event}", file=fout)
@@ -141,7 +145,8 @@ def main(args):
     """The main function"""
 
     parser = argparse.ArgumentParser(
-        description="Splits images from list into separate lists clusterd by their radial profile similarities"
+        description="Splits images from list into separate lists clusterd by their radial profile similarities",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     parser.add_argument(
@@ -158,6 +163,9 @@ def main(args):
     )
     parser.add_argument(
         "--criterion", type=str, help="Clustering criterion", default="maxclust"
+    )
+    parser.add_argument(
+        "--min_num_images", type=int, help="Minimum number of images in list; all below this will be thrown in single file", default=50
     )
     parser.add_argument(
         "--output_prefix", type=str, help="Output prefix", default="clustered"
@@ -181,6 +189,7 @@ def main(args):
         output_prefix=args.output_prefix,
         threshold=args.threshold,
         criterion=args.criterion,
+        min_num_images=args.min_num_images
     )
 
 
