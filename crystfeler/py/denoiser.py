@@ -6,10 +6,8 @@ import h5py
 import sys
 from tqdm import tqdm
 import os
-import pysnooper
 
 
-@pysnooper.snoop("run.log")
 def denoise_lst(
     input_lst: str,
     cxi_path="/entry_1/data_1/data",
@@ -215,7 +213,7 @@ def main(args):
     )
     parser.add_argument(
         "--zero_negative",
-        type=bool,
+        type=int,
         help="Whether to zero out negative pixels or not",
         default=True,
     )
