@@ -97,7 +97,7 @@ def dict2clustered_lists(
     idx = fcluster(Z, t=threshold, criterion=criterion)
 
     # output lists
-    for list_idx in set(idx):
+    for list_idx in tqdm(list(set(idx)), desc="Output lists"):
         belong_to_this_idx = np.where(idx == list_idx)
         fout_name = f"{output_prefix}_{list_idx}.lst"
         with open(fout_name, "w") as fout:
