@@ -6,8 +6,10 @@ import h5py
 import sys
 from tqdm import tqdm
 import os
+import pysnooper
 
 
+@pysnooper.snoop("run.log")
 def denoise_lst(
     input_lst: str,
     cxi_path="/entry_1/data_1/data",
@@ -46,7 +48,6 @@ def denoise_lst(
         output_cxi_prefix = ""
 
     cxi_cnt = 0
-    output_cxi_list = []
     for input_cxi, events in tqdm(
         events_dict.items(), desc=f"Processing files in {input_lst} one by one"
     ):
@@ -65,10 +66,15 @@ def denoise_lst(
         with h5py.File(input_cxi, "r") as h5fin:
             data = h5fin[cxi_path]
 
-            for chunk_idx in range(0, num_images, chunksize):
-                start, stop = chunk_idx * chunksize, (chunk_idx + 1) * chunksize
-                current_data = data[events][start:stop]
-                if current_data.shape < chunksize_threshold:
+            for chunk_start in tqdm(
+                range(0, num_images, chunksize), desc="Running denoising in chunks"
+            ):
+                start, stop = chunk_start, chunk_start + chunksize
+                chunk_idx = chunk_start // chunksize
+
+                events_idx = np.array(events)[start:stop]
+                current_data = data[events_idx]
+                if current_data.shape[0] < chunksize_threshold:
                     print(
                         f"Some images from {input_cxi} won't be saved since their shape is less than {chunksize_threshold}"
                     )
@@ -108,7 +114,7 @@ def apply_mask(np_arr, center, r=45):
 def background(arr, q=45):
     """Return median of q-th percentile of each pixel"""
 
-    print("Start background estimation")
+    # print("Start background estimation")
     return np.percentile(arr, q=q, axis=(0))
 
 
@@ -158,6 +164,7 @@ def scalefactors_bin(arr, bg, alpha=0.01, num_iterations=10):
     so that the share of negative pixels in resulting difference 
     is less thatn threshold
     """
+    # print("Start scalefactor estimation")
     return np.array(
         [
             bin_scale(arr[i], bg, alpha=alpha, num_iterations=num_iterations)
@@ -195,9 +202,6 @@ def main(args):
     )
     parser.add_argument("--center", type=str, help="Center position", default=None)
     parser.add_argument(
-        "--out_prefix", type=str, help="Prefix for output cxi files", default=None
-    )
-    parser.add_argument(
         "--chunksize",
         type=int,
         help="Defines size of a single denoising chunk",
@@ -234,11 +238,11 @@ def main(args):
     center = map(float, args.center.split())
     center = list(center)
     denoise_lst(
-        input_lst,
+        args.input_lst,
         cxi_path=args.datapath,
         output_cxi_prefix=args.out_prefix,
         chunksize=args.chunksize,
-        chunksize_theshold=args.chunksize_threshold,
+        chunksize_threshold=args.chunksize_threshold,
         zero_negative=args.zero_negative,
         percentile=args.percentile,
     )
