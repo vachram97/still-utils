@@ -6,12 +6,10 @@ import h5py
 import sys
 from tqdm import tqdm
 import os
-import pysnooper
 from scipy.cluster.hierarchy import ward, fcluster
 from scipy.spatial.distance import pdist
 
 
-@pysnooper.snoop('lst2dict.log')
 def lst2dict(
     input_lst: str, center, cxi_path="/entry_1/data_1/data", chunksize=100
 ) -> np.ndarray:
@@ -78,9 +76,10 @@ def lst2dict(
     for cxi_name, arr in tqdm(
         profiles_dict.items(), desc="Iterating over profiles_dict"
     ):
-        for event, profile in tqdm(arr, desc="Iterating over single cxi image events"):
+        for event, profile in arr:
             ret.append(np.array([cxi_name, event, profile]))
-    return np.array(ret)
+    ret = np.array(ret)
+    return ret
 
 
 def dict2clustered_lists(
@@ -89,7 +88,7 @@ def dict2clustered_lists(
     threshold=25,
     criterion="maxclust",
 ):
-    profiles = profiles_arr[:, 2]
+    profiles = np.array([elem[2] for elem in profiles_arr])
     names_and_events = profiles_arr[:, :2]
 
     Z = ward(pdist(profiles))
@@ -136,7 +135,6 @@ def apply_mask(np_arr, center, r=45):
     return np_arr * mask.reshape(1, *shape)
 
 
-@pysnooper.snoop('run.log')
 def main(args):
     """The main function"""
 
