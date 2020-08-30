@@ -571,7 +571,7 @@ if [[ "$NIMAGES_INPUT" != "n/a (file lists not available)" ]]; then
 fi
 
 if [[ $(grep -c -- '--no-non-hits-in-stream' ${INPUT}) != 0 ]]; then
-	echo -e "\e[33mWarning:\e[0m following two values are unreliable, since the stream does not contain hits with peaks less then certain value"
+	echo -e "\e[33mWarning:\e[0m following two values may be unreliable, since the stream does not contain non-hits (--no-non-hits-in-stream option was used in indexamajig)"
 fi
 echo "Image indexing rate: $(python -c "print(round(100*${NINDEXED}/${NIMAGES}.,2))") %"
 echo "Crystals percentage: $(python -c "print(round(100*${NCRYST}/${NIMAGES}.,2))") %"
