@@ -86,8 +86,6 @@ TOP="none"
 for var in "$@"; do
 	if ! create_variables "$var"; then
 		echo "Input file ${var} is invalid"; exit 1
-	else
-		cp $var "$CURRENT_LOGDIR"
 	fi
 done
 TOP="$(echo -e "${TOP}" | tr -d '[:space:]')"
@@ -95,6 +93,9 @@ TOP="$(echo -e "${TOP}" | tr -d '[:space:]')"
 CURRENT_LOGDIR="${LOGDIR}/${PROJECT_NAME}_${time}"
 mkdir -p "${CURRENT_LOGDIR}/indexer-logs" 2>/dev/null || exit 1;
 
+for var in "$@"; do
+	cp $var "$CURRENT_LOGDIR"
+done
 # check if path is absolute, if not -- make it
 if ! [[ ${GEOM::1} == "/" ]]; then GEOM="${PWD}/${GEOM}"; fi
 if ! [[ ${CELL::1} == "/" ]]; then CELL="${PWD}/${CELL}"; fi
