@@ -159,12 +159,13 @@ if [[ "${SLURM}" == "1" ]]; then
 	echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_%a.log" >> ${current_worker}
 	echo "#SBATCH --nodes 1" >> ${current_worker}
 	echo "#SBATCH --exclusive" >> ${current_worker}
-	echo "#SBATCH --array=1-${LST_NUM}" >> ${current_worker}
+	echo "#SBATCH --array=1-${LST_NUM}%${MAX_NODES}" >> ${current_worker}
 	echo >> "${current_worker}"
 	echo "${SLURM_SETUP}" >> "${current_worker}"
 	echo >> "${current_worker}"
 
 	echo 'printf -v TASK_ID "%04d\n" ${SLURM_ARRAY_TASK_ID}' >> ${current_worker}
+	echo "TASK_ID=\${TASK_ID%$'\n'}" >> ${current_worker}
 
 	# writing tail line
 	if [[ "${MERGE_OFFLINE}" == "FALSE" ]]; then
@@ -183,7 +184,7 @@ if [[ "${SLURM}" == "1" ]]; then
 	current_lst=${CURRENT_LOGDIR}/list_\${TASK_ID}.lst
 
 	# now writing the execution string itself
-	EXECSTRING="${BASEEXECSTRING} -o ${current_stream} -i ${current_lst}"
+	EXECSTRING="${BASEEXECSTRING} -o \"${current_stream}\" -i \"${current_lst}\""
 	EXECSTRING="${EXECSTRING} --peaks=${PEAKS} --indexing=${INDEXING}"
 	EXECSTRING="${EXECSTRING} -j ${NPROC}"  # this will use the `nproc` value on host machine
 
@@ -197,7 +198,7 @@ if [[ "${SLURM}" == "1" ]]; then
 
 	echo "wait" >> "${current_worker}"
 	if [[ "${DEBUG}" == "FALSE" ]]; then
-		JOB_NUMBER="$(sbatch "${current worker}" | awk '{ print $4 }')"
+		JOB_NUMBER="$(sbatch "${current_worker}" | awk '{ print $4 }')"
 	else
 		JOB_NUMBER="1"
 	fi
@@ -227,6 +228,7 @@ if [[ "${SLURM}" == "1" ]]; then
 		done" >> "${merger}"
 		
 		if [[ "${DEBUG}" == "FALSE" ]]; then
+			sleep 5
 			sbatch "${merger}"
 		fi
 	fi
