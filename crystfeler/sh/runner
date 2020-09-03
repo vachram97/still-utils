@@ -159,7 +159,11 @@ if [[ "${SLURM}" == "1" ]]; then
 	echo "#SBATCH --error ${CURRENT_LOGDIR}/stderr_%a.log" >> ${current_worker}
 	echo "#SBATCH --nodes 1" >> ${current_worker}
 	echo "#SBATCH --exclusive" >> ${current_worker}
-	echo "#SBATCH --array=1-${LST_NUM}%${MAX_NODES}" >> ${current_worker}
+	if [[ -z $MAX_NODES ]]; then 
+		echo "#SBATCH --array=1-${LST_NUM}" >> ${current_worker}
+	else
+		echo "#SBATCH --array=1-${LST_NUM}%${MAX_NODES}" >> ${current_worker}
+	fi
 	echo >> "${current_worker}"
 	echo "${SLURM_SETUP}" >> "${current_worker}"
 	echo >> "${current_worker}"
