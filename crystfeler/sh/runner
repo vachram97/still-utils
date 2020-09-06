@@ -145,6 +145,10 @@ if [[ "${SLURM}" == "1" ]]; then
 		--lines=${NODELINES} \
 		"${LST}" "${CURRENT_LOGDIR}/list_"
 	LST_NUM=$(ls ${CURRENT_LOGDIR}/list_* | wc -l)
+	if [[ LST_NUM -gt 1000 ]]; then
+		echo "Too many jobs in array! Change NODELINES!"
+		exit 1;
+	fi
 
 	# print headers to worker script
 	
@@ -161,6 +165,7 @@ if [[ "${SLURM}" == "1" ]]; then
 	echo "#SBATCH --exclusive" >> ${current_worker}
 	if [[ ! -z $EXCLUDE_NODES ]]; then
 		echo "#SBATCH --exclude=${EXCLUDE_NODES}" >> ${current_worker}
+	fi
 	if [[ -z $MAX_NODES ]]; then 
 		echo "#SBATCH --array=1-${LST_NUM}" >> ${current_worker}
 	else
