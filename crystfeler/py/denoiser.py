@@ -373,6 +373,7 @@ def denoise_lst(
     chunks=True,
     chunksize=100,
     zero_negative=True,
+    dtype=np.int16,
     **denoiser_kwargs,
 ) -> None:
     """
@@ -465,7 +466,7 @@ def denoise_lst(
 
                 events_idx = np.array(events)[start:stop]
                 current_data = data[events_idx]
-                new_data = process_chunk(current_data, **denoiser_kwargs)
+                new_data = process_chunk(current_data, **denoiser_kwargs).astype(dtype)
                 if zero_negative:
                     new_data[new_data < 0] = 0
 
