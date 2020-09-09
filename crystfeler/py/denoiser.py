@@ -141,7 +141,10 @@ def cluster_ndarray(
             fout_name = f"{output_prefix}_{list_idx}.lst"
             out_cluster_idx = list_idx
         out_lists.add(fout_name)
-        os.remove(fout_name)
+        try:
+            os.remove(fout_name)
+        except OSError:
+            pass
 
         # print output lists if you want to
         for line in names_and_events[belong_to_this_idx]:
