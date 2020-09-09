@@ -366,7 +366,8 @@ def lst2profiles_ndarray(
 
 def denoise_lst(
     input_lst: str,
-    center,
+    center=None,
+    radius=None,
     denoiser="nmf",
     cxi_path="/entry_1/data_1/data",
     output_cxi_prefix=None,
@@ -468,7 +469,9 @@ def denoise_lst(
 
                 events_idx = np.array(events)[start:stop]
                 current_data = data[events_idx]
-                new_data = process_chunk(current_data, **denoiser_kwargs).astype(dtype)
+                new_data = process_chunk(
+                    current_data, center=center, radius=radius, **denoiser_kwargs
+                ).astype(dtype)
                 if zero_negative:
                     new_data[new_data < 0] = 0
 
@@ -485,7 +488,7 @@ def denoise_lst(
                     )
 
 
-def percentile_denoise(data, center=(720, 710), percentile=45, alpha=5e-2, radius=45):
+def percentile_denoise(data, center, percentile=45, alpha=5e-2, radius=45):
     """
     percentile_denoise applies percentile denoising:
     - create percentile-based background profille
@@ -556,7 +559,7 @@ def nmf_denoise(arr, center, n_components=5, important_components=1, radius=45):
         coeffs[:, :important_components] @ bg_full[:important_components, :]
     ).reshape(arr.shape[0], *img_shape)
 
-    return arr - bg_scaled
+    return _apply_mask(arr - bg_scaled, radius=radius, center=center)
 
 
 def svd_denoise(
@@ -601,7 +604,7 @@ def svd_denoise(
         coeffs[:, :important_components] @ bg_full[:important_components, :]
     ).reshape(arr.shape[0], *img_shape)
 
-    return arr - bg_scaled
+    return _apply_mask(arr - bg_scaled, radius=radius, center=center)
 
 
 def main(args):
@@ -642,7 +645,7 @@ def main(args):
     )
     parser.add_argument("--percentile", type=int, help="Percentile to use", default=45)
     parser.add_argument(
-        "--threshold",
+        "--alpha",
         type=float,
         help="Threshold for scale factor determination",
         default=0.05,
@@ -695,6 +698,7 @@ def main(args):
     for list_to_denoise in tqdm(image_lists_list, desc="Denoising each clustered list"):
         denoise_lst(
             input_lst=list_to_denoise,
+            center=center,
             denoiser=args.denoiser,
             cxi_path=args.datapath,
             output_cxi_prefix=args.out_prefix,
