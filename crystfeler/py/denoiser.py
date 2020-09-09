@@ -548,7 +548,7 @@ def nmf_denoise(arr, center, n_components=5, important_components=1, radius=45):
         Denoised data
     """
     img_shape = arr.shape[1:]
-    X = arr.reshape(arr.shape[0], -1)
+    X = _apply_mask(arr, center=center, radius=radius).reshape(arr.shape[0], -1)
 
     nmf = NMF(n_components=n_components)
     nmf.fit(X)
@@ -593,7 +593,7 @@ def svd_denoise(
         Denoised array of same shape
     """
     img_shape = arr.shape[1:]
-    X = arr.reshape(arr.shape[0], -1)
+    X = _apply_mask(arr, center=center, radius=radius).reshape(arr.shape[0], -1)
 
     svd = TruncatedSVD(n_components=n_components, random_state=42, n_iter=n_iter)
     svd.fit(X)
