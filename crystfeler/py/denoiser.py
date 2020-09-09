@@ -5,7 +5,44 @@ import numpy as np
 import h5py
 import sys
 from tqdm import tqdm
+from collections import defaultdict
 import os
+
+
+class ImageLoader:
+    """
+    ImageLoader class that abstracts the image loading process, 
+    loading images one by one and returning a handle to write them
+    """
+
+    def __init__(self, input_list, chunksize=100):
+        self.input = input
+        self.chunksize = chunksize
+
+        # load all frames from input list
+        data = defaultdict(lambda x: set())
+        with open(input_list, mode="r") as fin:
+            for line in fin:
+                splitline = line.split()
+                image = splitline[0]
+                event = None if len(splitline) == 1 else splitline[1].replace("//", "")
+
+                data[image].add(event)
+
+        self._data = data
+
+    def __iter__(self):
+        return self
+
+    def __next__(self, mode="r"):
+        """Here the magic happens that helps to iterate"""
+        """
+        Pseudocode:
+
+        data_to_return, handles_to_return = self.data[:chunksize]
+        self.data = self.data - data_to_return
+        return data_to_return, handles_to_return
+        """
 
 
 def denoise_lst(
