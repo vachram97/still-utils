@@ -366,6 +366,7 @@ def lst2profiles_ndarray(
 
 def denoise_lst(
     input_lst: str,
+    center,
     denoiser="nmf",
     cxi_path="/entry_1/data_1/data",
     output_cxi_prefix=None,
@@ -412,7 +413,7 @@ def denoise_lst(
     elif denoiser == "nmf":
         process_chunk = nmf_denoise
     elif denoiser == "svd":
-        process_chunk = nmf_denoise
+        process_chunk = svd_denoise
     else:
         raise TypeError("Must provide correct denoiser")
 
