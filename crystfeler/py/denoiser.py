@@ -49,7 +49,7 @@ class ImageLoader:
         """
 
 
-def _apply_mask(np_arr, center=(719.9, 711.5), r=45):
+def _apply_mask(np_arr, center=(719.9, 711.5), radius=45):
     """
     _apply_mask applies circular mask to a single image or image series
 
@@ -77,6 +77,7 @@ def _apply_mask(np_arr, center=(719.9, 711.5), r=45):
     mask = np.ones(shape)
 
     rx, ry = map(int, center)
+    r = radius
     for x in range(rx - r, rx + r):
         for y in range(ry - r, ry + r):
             if (x - rx) ** 2 + (y - ry) ** 2 <= r ** 2:
@@ -270,7 +271,7 @@ def _radial_profile(data, center, normalize=True):
 
 
 def lst2profiles_ndarray(
-    input_lst: str, center, cxi_path="/entry_1/data_1/data", chunksize=100
+    input_lst: str, center, cxi_path="/entry_1/data_1/data", chunksize=100, radius=45,
 ) -> np.ndarray:
     """
     lst2profiles_ndarray converts CrystFEL list into 2D np.ndarray with following structure:
@@ -343,7 +344,7 @@ def lst2profiles_ndarray(
 
                 events_idx = np.array(events)[start:stop]
                 current_data = data[events_idx]
-                current_data = _apply_mask(current_data, center=center)
+                current_data = _apply_mask(current_data, center=center, radius=radius)
 
                 for event, image in zip(events_idx, current_data):
                     profile = _radial_profile(image, center=center)
@@ -483,7 +484,7 @@ def denoise_lst(
                     )
 
 
-def percentile_denoise(data, center=(720, 710), percentile=45, alpha=5e-2):
+def percentile_denoise(data, center=(720, 710), percentile=45, alpha=5e-2, radius=45):
     """
     percentile_denoise applies percentile denoising:
     - create percentile-based background profille
@@ -504,7 +505,7 @@ def percentile_denoise(data, center=(720, 710), percentile=45, alpha=5e-2):
     np.ndarray
         Denoised images
     """
-    data = _apply_mask(data, center=center)
+    data = _apply_mask(data, center=center, radius=radius)
     bg = _percentile_filter(data, q=percentile)
     scales = _scalefactors_bin(data, bg, alpha=alpha)
 
@@ -516,7 +517,7 @@ def percentile_denoise(data, center=(720, 710), percentile=45, alpha=5e-2):
     return data
 
 
-def nmf_denoise(arr, n_components=5, important_components=1):
+def nmf_denoise(arr, center, n_components=5, important_components=1, radius=45):
     """
     nmf_denoise performs NMF-decomposition based denoising
     - (N, M, M) image series --> (N, M**2) flattened images
@@ -530,6 +531,8 @@ def nmf_denoise(arr, n_components=5, important_components=1):
     ----------
     arr : np.ndarray
         Input data (series of 2D images, 3D total)
+    center : tuple
+        (corner_x, corner_y) tuple
     n_components : int, optional
         n_components for dimensionality reduction, by default 5
     important_components : int, optional
@@ -555,7 +558,9 @@ def nmf_denoise(arr, n_components=5, important_components=1):
     return arr - bg_scaled
 
 
-def svd_denoise(arr, n_components=5, important_components=1, n_iter=5):
+def svd_denoise(
+    arr, center, n_components=5, important_components=1, n_iter=5, radius=45
+):
     """
     svd_denoise performs SVD-based denoising of input array
     - (N, M, M) image series --> (N, M**2) flattened images
@@ -569,6 +574,8 @@ def svd_denoise(arr, n_components=5, important_components=1, n_iter=5):
     ----------
     arr : np.ndarra
         3D numpy array (series of 2D images)
+    center : tuple
+        (corner_x, corner_y) tuple
     n_components : int, optional
         n_components for TruncatedSVD decomposition, by default 5
     important_components : int, optional
@@ -692,6 +699,7 @@ def main(args):
             output_cxi_prefix=args.out_prefix,
             chunksize=args.chunksize,
             zero_negative=args.zero_negative,
+            radius=args.radius,
         )
 
 
