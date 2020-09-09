@@ -10,6 +10,7 @@ from scipy.cluster.hierarchy import ward, fcluster
 from scipy.spatial.distance import pdist
 from sklearn.decomposition import NMF, TruncatedSVD
 from tqdm import tqdm
+from typing import Union
 
 
 class ImageLoader:
@@ -110,14 +111,16 @@ def cluster_ndarray(
     threshold : int, optional
         distance according to criterion, by default 25
     criterion : str, optional
-        criterion for clustering0, by default "maxclust"
+        criterion for clustering, by default "maxclust"
     min_num_images : int, optional
         minimal number of images in single cluster, others will go to singletone, by default 50
 
     Returns
     -------
-    dict
-        Dictionary {cluster_num:[*image_and_event_lines]} 
+    Union[dict, list]
+        Either:
+           - Dictionary {cluster_num:[*image_and_event_lines]} -- if output_lists == False
+           - List [output_list_1.lst, output_list_2.lst, ...] -- if output_lists == True
     """
     profiles = np.array([elem[2] for elem in profiles_arr])
     names_and_events = profiles_arr[:, :2]
@@ -127,7 +130,8 @@ def cluster_ndarray(
     idx = fcluster(Z, t=threshold, criterion=criterion)
 
     # output lists
-    clusters = defaultdict(lambda: [])
+    clusters = defaultdict(lambda: set())
+    out_lists = set()
     for list_idx in tqdm(list(set(idx)), desc="Output lists"):
         belong_to_this_idx = np.where(idx == list_idx)[0]
         if len(belong_to_this_idx) < min_num_images:
@@ -136,17 +140,22 @@ def cluster_ndarray(
         else:
             fout_name = f"{output_prefix}_{list_idx}.lst"
             out_cluster_idx = list_idx
+        out_lists.add(fout_name)
+        os.remove(fout_name)
 
         # print output lists if you want to
         for line in names_and_events[belong_to_this_idx]:
             cxi_name, event = line
             frame_address = f"{cxi_name} //{event}"
-            clusters[out_cluster_idx].append(frame_address)
+            clusters[out_cluster_idx].add(frame_address)
         if output_lists:
             with open(fout_name, "a") as fout:
-                print(clusters[out_cluster_idx], sep="\n", file=fout)
+                print(*clusters[out_cluster_idx], sep="\n", file=fout)
 
-    return clusters
+    if output_lists:
+        return list(out_lists)
+    else:
+        return clusters
 
 
 def _percentile_filter(arr, q=45):
@@ -257,11 +266,11 @@ def _radial_profile(data, center, normalize=True):
     return radialprofile
 
 
-def lst2ndarray(
+def lst2profiles_ndarray(
     input_lst: str, center, cxi_path="/entry_1/data_1/data", chunksize=100
 ) -> np.ndarray:
     """
-    lst2ndarray converts CrystFEL list into 2D np.ndarray with following structure:
+    lst2profiles_ndarray converts CrystFEL list into 2D np.ndarray with following structure:
     np.array([filename, event_name, *profile])
 
     Parameters
@@ -605,9 +614,9 @@ def main(args):
         default=100,
     )
     parser.add_argument(
-        "--chunksize_threshold",
+        "--min_num_images",
         type=int,
-        help="Chunks less then that size wont be processed",
+        help="Chunks less then that size will be sent to singletone",
         default=50,
     )
     parser.add_argument(
@@ -617,7 +626,7 @@ def main(args):
         default=True,
     )
     parser.add_argument(
-        "--out_prefix", type=str, help="Prefix for output cxi files", default=None
+        "--out_prefix", type=str, help="Prefix for output cxi files", default="denoised"
     )
     parser.add_argument("--percentile", type=int, help="Percentile to use", default=45)
     parser.add_argument(
@@ -630,27 +639,62 @@ def main(args):
         "--radius", type=int, default=45, help="Radius to apply mask in the center"
     )
 
+    list_of_denoisers = ["percentile", "nmf", "svd"]
+    parser.add_argument(
+        "--denoiser", choices=list_of_denoisers, help="Type of denoiser to use"
+    )
+    parser.add_argument(
+        "--output_lst_prefix",
+        type=str,
+        help="List prefix for lists after clustering",
+        default="clustered",
+    )
+    parser.add_argument(
+        "--clustering_distance",
+        type=float,
+        help="Clustering distance threshold",
+        default=25.0,
+    )
+
+    parser.add_argument(
+        "--criterion",
+        type=str,
+        help="Clustering criterion (google `scipy.fcluster`)",
+        default="maxclust",
+    )
+
     args = parser.parse_args()
 
     center = map(float, args.center.split())
     center = list(center)
-    denoise_lst(
-        args.input_lst,
-        cxi_path=args.datapath,
-        output_cxi_prefix=args.out_prefix,
-        chunksize=args.chunksize,
-        chunksize_threshold=args.chunksize_threshold,
-        zero_negative=args.zero_negative,
-        percentile=args.percentile,
+
+    profiles_ndarray = lst2profiles_ndarray(
+        args.input_lst, center=center, cxi_path=args.datapath, chunksize=args.chunksize
+    )
+    image_lists_list = cluster_ndarray(
+        profiles_ndarray,
+        output_prefix=args.output_lst_prefix,
+        output_lists=True,
+        threshold=args.clustering_distance,
+        criterion=args.criterion,
+        min_num_images=args.min_num_images,
     )
 
+    for list_to_denoise in tqdm(image_lists_list, desc="Denoising each clustered list"):
+        denoise_lst(
+            input_lst=list_to_denoise,
+            denoiser=args.denoiser,
+            cxi_path=args.datapath,
+            output_cxi_prefix=args.out_prefix,
+            chunksize=args.chunksize,
+            zero_negative=args.zero_negative,
+        )
 
-# if __name__ == "__main__":
-#
-# import warnings
-#
-# with warnings.catch_warnings():
-# warnings.filterwarnings("ignore", category=Warning)
-# main(sys.argv[1:])
-#
+
+if __name__ == "__main__":
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=Warning)
+        main(sys.argv[1:])
 
