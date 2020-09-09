@@ -89,7 +89,7 @@ def dict2clustered_lists(
     output_prefix="clustered",
     threshold=25,
     criterion="maxclust",
-    min_num_images = 50
+    min_num_images=50,
 ):
     profiles = np.array([elem[2] for elem in profiles_arr])
     names_and_events = profiles_arr[:, :2]
@@ -165,7 +165,10 @@ def main(args):
         "--criterion", type=str, help="Clustering criterion", default="maxclust"
     )
     parser.add_argument(
-        "--min_num_images", type=int, help="Minimum number of images in list; all below this will be thrown in single file", default=50
+        "--min_num_images",
+        type=int,
+        help="Minimum number of images in list; all below this will be thrown in single file",
+        default=50,
     )
     parser.add_argument(
         "--output_prefix", type=str, help="Output prefix", default="clustered"
@@ -189,7 +192,7 @@ def main(args):
         output_prefix=args.output_prefix,
         threshold=args.threshold,
         criterion=args.criterion,
-        min_num_images=args.min_num_images
+        min_num_images=args.min_num_images,
     )
 
 
