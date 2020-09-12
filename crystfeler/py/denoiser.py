@@ -12,6 +12,8 @@ from sklearn.decomposition import NMF, TruncatedSVD
 from tqdm import tqdm
 from typing import Union
 
+from imagereader import CXIReader,CBFReader,H5Reader
+
 
 class ImageLoader:
     """
@@ -19,21 +21,24 @@ class ImageLoader:
     loading images one by one and returning a handle to write them
     """
 
-    def __init__(self, input_list, chunksize=100):
-        self.input = input
+    def __init__(self, input_list, chunksize=100, cxi_path=None, h5_path=None):
+        self.input_list = input_list
         self.chunksize = chunksize
 
         # load all frames from input list
-        data = defaultdict(lambda: set())
+        data = set()
         with open(input_list, mode="r") as fin:
             for line in fin:
-                splitline = line.split()
-                image = splitline[0]
-                event = None if len(splitline) == 1 else splitline[1].replace("//", "")
+                data.add(line.rstrip())
 
-                data[image].add(event)
+        self._data = list(data)
 
-        self._data = data
+        # initialize chain of image readers
+        self.cxi_reader = CXIReader(path_to_data=cxi_path)
+        self.cbf_reader = CBFReader()
+        self.h5_reader = H5Reader(path_to_data=h5_path)
+        self.cxi_reader.next_reader(self.cbf_reader).next_reader(self.h5_reader)
+        self.image_reader = self.cxi_reader
 
     def __iter__(self):
         return self
@@ -47,6 +52,15 @@ class ImageLoader:
         self.data = self.data - data_to_return
         return data_to_return, handles_to_return
         """
+        current_chunk_list = self._data[:self.chunksize]
+        if len(current_chunk_list) == 0:
+            raise StopIteration
+        result = []
+        for event in current_chunk_list:
+            result.append(self.image_reader.get_image(event))
+        self._data = self._data[self.chunksize:]
+        return np.array(result)
+
 
 
 def _apply_mask(np_arr, center=(719.9, 711.5), radius=45):
