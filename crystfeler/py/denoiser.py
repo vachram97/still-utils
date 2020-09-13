@@ -64,8 +64,7 @@ class ImageLoader:
         for event in current_chunk_list:
             result.append(self.image_reader.get_image(event))
         self._data = self._data[self.chunksize:]
-        result = np.vstack(result)
-        print("here")
+        result = np.stack(result, axis=0)
         return current_chunk_list, result
 
 
@@ -79,7 +78,7 @@ def _apply_mask(np_arr, center=(719.9, 711.5), radius=45):
         Input array to apply mask to
     center : tuple
         (corner_x, corner_y) pair of floats
-    r : int, optional
+    radius : int, optional
         radius of pixels to be zeroed, by default 45
 
     Returns
@@ -111,7 +110,7 @@ def _apply_mask(np_arr, center=(719.9, 711.5), radius=45):
 
 
 def cluster_ndarray(
-        profiles_arr: np.ndarray,
+        profiles_arr,
         output_prefix="clustered",
         output_lists=False,
         threshold=25,
@@ -143,8 +142,8 @@ def cluster_ndarray(
            - Dictionary {cluster_num:[*image_and_event_lines]} -- if output_lists == False
            - List [output_list_1.lst, output_list_2.lst, ...] -- if output_lists == True
     """
-    profiles = np.array([elem[2] for elem in profiles_arr])
-    names_and_events = profiles_arr[:, :2]
+    profiles = np.array([elem[1] for elem in profiles_arr])
+    names = np.array([elem[0] for elem in profiles_arr])
 
     # this actually does clustering
     Z = ward(pdist(profiles))
@@ -168,10 +167,8 @@ def cluster_ndarray(
             pass
 
         # print output lists if you want to
-        for line in names_and_events[belong_to_this_idx]:
-            cxi_name, event = line
-            frame_address = f"{cxi_name} //{event}"
-            clusters[out_cluster_idx].add(frame_address)
+        for name in names[belong_to_this_idx]:
+            clusters[out_cluster_idx].add(name)
         if output_lists:
             with open(fout_name, "a") as fout:
                 print(*clusters[out_cluster_idx], sep="\n", file=fout)
@@ -235,78 +232,21 @@ def lst2profiles_ndarray(
 
     Returns
     -------
-    np.ndarray
-        np.array([filename, event_name, *profile])
+    List
+        [filename, *profile]
     """
 
-    events_dict = {}
-    with open(input_lst, "r") as fin:
-        for line in fin:
-            if "//" in line:  # if line represents an event in cxi
-                filename, event = line.split(" //")
-                event = int(event)
-                if filename[0] != "/":  # if path is not absolute
-                    filename = f"{os.getcwd()}/{filename}"
-                if filename in events_dict:
-                    if None not in events_dict[filename]:
-                        events_dict[filename].add(event)
-                    else:
-                        pass
-                else:
-                    events_dict[filename] = {event}
-            else:  # if line represents both event and its absence
-                filename = line.rstrip()
-                if filename[0] != "/":  # if path is not absolute
-                    filename = os.getcwd() + filename
-                events_dict[line] = {None}
+    loader = ImageLoader(input_lst, cxi_path=cxi_path, chunksize=chunksize)
 
-    cxi_cnt = 0
+    profiles = []
 
-    profiles_dict = {}
-    for input_cxi, events in tqdm(
-            events_dict.items(), desc=f"Reading cxi files from {input_lst} one by one"
-    ):
-        cxi_cnt += 1
+    for lst, data in tqdm(loader, desc='Converting images to radial profiles'):
 
-        # create events list
-        if None in events:
-            with h5py.File(input_cxi.rstrip(), "r") as fin:
-                cxi_fist_dimension = fin[cxi_path].shape[0]
-                events = list(range(cxi_fist_dimension))
-        else:
-            events = sorted(list(events))
+        for elem in zip(lst, data):
+            profile = _radial_profile(elem[1], center=center)
+            profiles.append([elem[0], profile])
 
-        num_images = len(events)
-
-        event_profile_pairs = []
-        with h5py.File(input_cxi.rstrip(), "r") as h5fin:
-            data = h5fin[cxi_path]
-
-            for chunk_start in tqdm(
-                    range(0, num_images, chunksize), desc="Reading images in chunks"
-            ):
-                start, stop = chunk_start, chunk_start + chunksize
-
-                events_idx = np.array(events)[start:stop]
-                current_data = data[events_idx]
-                current_data = _apply_mask(current_data, center=center, radius=radius)
-
-                for event, image in zip(events_idx, current_data):
-                    profile = _radial_profile(image, center=center)
-                    event_profile_pairs.append([event, profile])
-
-        profiles_dict[input_cxi] = event_profile_pairs
-
-    ret = []
-    for cxi_name, arr in tqdm(
-            profiles_dict.items(), desc="Iterating over profiles_dict"
-    ):
-        for event, profile in tqdm(
-                arr, desc="Iterate over each single cxi image filename"
-        ):
-            ret.append(np.array([cxi_name, event, profile]))
-    ret = np.array(ret)
-    return ret
+    return profiles
 
 
 def denoise_lst(
@@ -331,7 +271,7 @@ def denoise_lst(
     ----------
     input_lst : str
         input list in CrystFEL format
-    denoiser : str, optional
+    denoiser_type : str, optional
         denoiser type, by default "nmf"
     cxi_path : str, optional
         path inside a cxi file, by default "/entry_1/data_1/data"
@@ -469,6 +409,7 @@ def main(args):
     profiles_ndarray = lst2profiles_ndarray(
         args.input_lst, center=center, cxi_path=args.datapath, chunksize=args.chunksize
     )
+    print("Clustering images using their radial profiles", file=sys.stderr)
     image_lists_list = cluster_ndarray(
         profiles_ndarray,
         output_prefix=args.output_lst_prefix,

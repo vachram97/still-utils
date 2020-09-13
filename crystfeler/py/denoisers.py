@@ -28,7 +28,7 @@ class NMFDenoiser(AbstractDenoiser):
 
         Parameters
         ----------
-        arr : np.ndarray
+        data : np.ndarray
             Input data (series of 2D images, 3D total)
         center : tuple
             (corner_x, corner_y) tuple
@@ -210,7 +210,7 @@ class PercentileDenoiser(AbstractDenoiser):
         """\
         Find proper scalefactor for an image given f _percentile_filter
         so that the share of negative pixels in resulting difference
-        is less thatn threshold
+        is less that threshold
         """
         # print("Start scalefactor estimation")
         return np.array(
