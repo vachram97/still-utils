@@ -25,20 +25,26 @@ class ImageLoader:
         self.input_list = input_list
         self.chunksize = chunksize
 
-        # load all frames from input list
-        data = set()
-        with open(input_list, mode="r") as fin:
-            for line in fin:
-                data.add(line.rstrip())
-
-        self._data = list(data)
-
         # initialize chain of image readers
         self.cxi_reader = CXIReader(path_to_data=cxi_path)
         self.cbf_reader = CBFReader()
         self.h5_reader = H5Reader(path_to_data=h5_path)
         self.cxi_reader.next_reader(self.cbf_reader).next_reader(self.h5_reader)
         self.image_reader = self.cxi_reader
+
+
+        # load all frames from input list
+        data = set()
+        with open(input_list, mode="r") as fin:
+            for line in fin:
+                if line.rstrip().endswith('.cxi'):
+                    num_events = self.cxi_reader.get_events_number(line.rstrip())
+                    for i in range(num_events):
+                        data.add(line.rstrip() + " //" + str(i))
+                else:
+                    data.add(line.rstrip())
+
+        self._data = list(data)
 
     def __iter__(self):
         return self
