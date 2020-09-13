@@ -53,9 +53,10 @@ class CXIReader(AbstractImageReader):
         event = int(event)
         with h5py.File(cxi_path, "r") as dataset:
             data = dataset[self.path_to_data]
-            image = np.ones((data.shape[1], data.shape[2]), dtype='int32')
-            data.read_direct(image, np.s_[event, :, :], np.s_[:])
-            return image
+            #image = np.ones((data.shape[1], data.shape[2]), dtype='int32')
+            #data.read_direct(image, np.s_[event, :, :], np.s_[:])
+            #return image
+            return data[event]
 
     def get_events_number(self, path):
         with h5py.File(path, "r") as dataset:
