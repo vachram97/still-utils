@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from sklearn.decomposition import NMF, TruncatedSVD
 import numpy as np
+from imagereader import apply_mask
 
 
 class AbstractDenoiser(ABC):
@@ -54,7 +55,7 @@ class NMFDenoiser(AbstractDenoiser):
                 coeffs[:, :self.important_components] @ bg_full[:self.important_components, :]
         ).reshape(data.shape[0], *img_shape)
 
-        return _apply_mask(data - bg_scaled, radius=radius, center=center)
+        return apply_mask(data - bg_scaled, radius=radius, center=center)
 
 
 class SVDDenoiser(AbstractDenoiser):
@@ -107,7 +108,7 @@ class SVDDenoiser(AbstractDenoiser):
                 coeffs[:, :self.important_components] @ bg_full[:self.important_components, :]
         ).reshape(data.shape[0], *img_shape)
 
-        return _apply_mask(data - bg_scaled, radius=radius, center=center)
+        return apply_mask(data - bg_scaled, radius=radius, center=center)
 
 
 class PercentileDenoiser(AbstractDenoiser):
@@ -137,7 +138,7 @@ class PercentileDenoiser(AbstractDenoiser):
         np.ndarray
             Denoised images
         """
-        data = _apply_mask(data, center=center, radius=radius)
+        data = apply_mask(data, center=center, radius=radius)
         bg = self._percentile_filter(data, q=self.percentile)
         scales = self._scalefactors_bin(data, bg, alpha=self.alpha)
 
@@ -220,43 +221,3 @@ class PercentileDenoiser(AbstractDenoiser):
             ]
         )
 
-
-def _apply_mask(np_arr, center=(719.9, 711.5), radius=45):
-    """
-    _apply_mask applies circular mask to a single image or image series
-
-    Parameters
-    ----------
-    np_arr : np.ndarray
-        Input array to apply mask to
-    center : tuple
-        (corner_x, corner_y) pair of floats
-    r : int, optional
-        radius of pixels to be zeroed, by default 45
-
-    Returns
-    -------
-    np.ndarray
-        Same shaped and dtype'd array as input
-    """
-
-    if len(np_arr.shape) == 3:
-        shape = np_arr.shape[1:]
-        shape_type = 3
-    else:
-        shape = np_arr.shape
-        shape_type = 2
-    mask = np.ones(shape)
-
-    rx, ry = map(int, center)
-    r = radius
-    for x in range(rx - r, rx + r):
-        for y in range(ry - r, ry + r):
-            if (x - rx) ** 2 + (y - ry) ** 2 <= r ** 2:
-                mask[x][y] = 0
-
-    if shape_type == 2:
-        return (np_arr * mask).astype(np_arr.dtype)
-    else:
-        mask = mask.reshape((*shape, 1))
-        return (np_arr * mask.reshape(1, *shape)).astype(np_arr.dtype)

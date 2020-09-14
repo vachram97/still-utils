@@ -68,47 +68,6 @@ class ImageLoader:
         return current_chunk_list, result
 
 
-def _apply_mask(np_arr, center=(719.9, 711.5), radius=45):
-    """
-    _apply_mask applies circular mask to a single image or image series
-
-    Parameters
-    ----------
-    np_arr : np.ndarray
-        Input array to apply mask to
-    center : tuple
-        (corner_x, corner_y) pair of floats
-    radius : int, optional
-        radius of pixels to be zeroed, by default 45
-
-    Returns
-    -------
-    np.ndarray
-        Same shaped and dtype'd array as input
-    """
-
-    if len(np_arr.shape) == 3:
-        shape = np_arr.shape[1:]
-        shape_type = 3
-    else:
-        shape = np_arr.shape
-        shape_type = 2
-    mask = np.ones(shape)
-
-    rx, ry = map(int, center)
-    r = radius
-    for x in range(rx - r, rx + r):
-        for y in range(ry - r, ry + r):
-            if (x - rx) ** 2 + (y - ry) ** 2 <= r ** 2:
-                mask[x][y] = 0
-
-    if shape_type == 2:
-        return (np_arr * mask).astype(np_arr.dtype)
-    else:
-        mask = mask.reshape((*shape, 1))
-        return (np_arr * mask.reshape(1, *shape)).astype(np_arr.dtype)
-
-
 def cluster_ndarray(
         profiles_arr,
         output_prefix="clustered",
@@ -213,7 +172,7 @@ def _radial_profile(data, center, normalize=True):
 
 
 def lst2profiles_ndarray(
-        input_lst: str, center, cxi_path="/entry_1/data_1/data", chunksize=100, radius=45,
+        input_lst: str, center, cxi_path="/entry_1/data_1/data", h5_path="/data/rawdata0", chunksize=100, radius=45,
 ) -> np.ndarray:
     """
     lst2profiles_ndarray converts CrystFEL list into 2D np.ndarray with following structure:
@@ -236,7 +195,7 @@ def lst2profiles_ndarray(
         [filename, *profile]
     """
 
-    loader = ImageLoader(input_lst, cxi_path=cxi_path, chunksize=chunksize)
+    loader = ImageLoader(input_lst, cxi_path=cxi_path, h5_path=h5_path, chunksize=chunksize)
 
     profiles = []
 
@@ -255,6 +214,7 @@ def denoise_lst(
         radius=None,
         denoiser_type="nmf",
         cxi_path="/entry_1/data_1/data",
+        h5_path="/data/rawdata0",
         output_cxi_prefix=None,
         output_lst=None,
         compression="gzip",
@@ -306,7 +266,7 @@ def denoise_lst(
     if output_cxi_prefix is None:
         output_cxi_prefix = ""
 
-    loader = ImageLoader(input_lst, cxi_path="/data/data", chunksize=chunksize)
+    loader = ImageLoader(input_lst, cxi_path=cxi_path, h5_path=h5_path, chunksize=chunksize)
 
     chunk_idx = 0
 
@@ -407,7 +367,7 @@ def main(args):
     center = list(center)
 
     profiles_ndarray = lst2profiles_ndarray(
-        args.input_lst, center=center, cxi_path=args.datapath, chunksize=args.chunksize
+        args.input_lst, center=center, cxi_path=args.datapath, h5_path=args.datapath, chunksize=args.chunksize
     )
     print("Clustering images using their radial profiles", file=sys.stderr)
     image_lists_list = cluster_ndarray(
@@ -425,6 +385,7 @@ def main(args):
             center=center,
             denoiser_type=args.denoiser,
             cxi_path=args.datapath,
+            h5_path=args.datapath,
             output_cxi_prefix=args.out_prefix,
             chunksize=args.chunksize,
             zero_negative=args.zero_negative,
